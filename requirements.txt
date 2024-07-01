@@ -1,0 +1,4 @@
+Flask
+SQLAlchemy
+pip
+Jinja2
