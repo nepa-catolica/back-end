@@ -1,6 +1,7 @@
 from .extensions import db
 from datetime import datetime
 
+
 class Aluno(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(255), unique=True, nullable=False)
@@ -12,6 +13,7 @@ class Aluno(db.Model):
     password = db.Column(db.String(255), nullable=False)
     permissao = db.Column(db.String(255), nullable=False, default='Aluno')
     projetos = db.relationship('AlunoProjeto', back_populates='aluno')
+
 
 class Professor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -25,6 +27,7 @@ class Professor(db.Model):
     permissao = db.Column(db.String(255), nullable=False, default='Professor')
     projetos_propostos = db.relationship('Projeto', back_populates='proponente')
 
+
 class Projeto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(255), nullable=False)
@@ -34,6 +37,9 @@ class Projeto(db.Model):
     aprovado = db.Column(db.Boolean, default=False, nullable=False)
     alunos_cadastrados = db.relationship('AlunoProjeto', back_populates='projeto')
     proponente = db.relationship('Professor', back_populates='projetos_propostos')
+    edital_pdf = db.Column(db.String(255), nullable=True)  # Adicionando campo para armazenar o nome do arquivo PDF
+
+
 
 class AlunoProjeto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -42,6 +48,7 @@ class AlunoProjeto(db.Model):
     aprovado = db.Column(db.Boolean, default=False, nullable=False)
     aluno = db.relationship('Aluno', back_populates='projetos')
     projeto = db.relationship('Projeto', back_populates='alunos_cadastrados')
+
 
 class Admin(db.Model):
     id = db.Column(db.Integer, primary_key=True)

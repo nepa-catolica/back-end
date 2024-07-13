@@ -44,7 +44,8 @@ def register():
                 telefone=data['telefone'],
                 password=data['password']
             )
-            return jsonify({"message": "Professor registrado com sucesso, aguardando aprovação", "professor": novo_professor.nome}), 201
+            return jsonify({"message": "Professor registrado com sucesso, aguardando aprovação",
+                            "professor": novo_professor.nome}), 201
         except Exception as e:
             return jsonify({"message": "Erro ao registrar professor", "error": str(e)}), 400
 

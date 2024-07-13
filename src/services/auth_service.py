@@ -7,6 +7,7 @@ from ..models import Aluno, Professor, Admin
 
 ph = PasswordHasher()
 
+
 class AuthService:
 
     @staticmethod
@@ -69,14 +70,42 @@ class AuthService:
         return None
 
     @staticmethod
+    def rejeitar_professor(professor_id):
+        professor = Professor.query.get(professor_id)
+
+        if professor:
+            professor.aprovado = False
+            db.session.commit()
+            return professor
+
+        return None
+
+    @staticmethod
+    def listar_professor_pendentes():
+        professors = Professor.query.filter(aprovado=False).all()
+        return professors
+
+    @staticmethod
+    def listar_professores_aprovados():
+        professors = Professor.query.filter(aprovado=True).all()
+        return professors
+
+    @staticmethod
     def login(identifier, password):
-        user = Admin.query.filter(
-            or_(Admin.email == identifier, Admin.matricula == identifier)
-        ).first() or Professor.query.filter(
-            or_(Professor.email == identifier, Professor.matricula == identifier)
-        ).first() or Aluno.query.filter(
-            or_(Aluno.email == identifier, Aluno.matricula == identifier)
-        ).first()
+        if identifier.isdigit():
+            user = Professor.query.filter(
+                Professor.matricula == int(identifier)
+            ).first() or Aluno.query.filter(
+                Aluno.matricula == int(identifier)
+            ).first()
+        else:
+            user = Admin.query.filter(
+                Admin.email == identifier
+            ).first() or Professor.query.filter(
+                Professor.email == identifier
+            ).first() or Aluno.query.filter(
+                Aluno.email == identifier
+            ).first()
 
         if user and AuthService.check_password(user.password, password):
             access_token = create_access_token(identity={'email': user.email, 'role': user.permissao})
