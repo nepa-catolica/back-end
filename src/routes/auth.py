@@ -10,10 +10,11 @@ def login():
     password = data['password']
 
     access_token = AuthService.login(identifier, password)
+
     if access_token:
         return jsonify(access_token=access_token), 200
 
-    return jsonify({"message": "Invalid credentials"}), 401
+    return jsonify({"message": "Invalid credentials or professor not approved"}), 401
 
 @bp.route('/api/register', methods=['POST'])
 def register():

@@ -108,8 +108,14 @@ class AuthService:
             ).first()
 
         if user and AuthService.check_password(user.password, password):
+
+            if isinstance(user, Professor) and not user.aprovado:
+                return None
+
             access_token = create_access_token(identity={'email': user.email, 'role': user.permissao})
+
             return access_token
+
         return None
 
     @staticmethod
