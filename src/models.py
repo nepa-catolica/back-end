@@ -11,7 +11,7 @@ class Aluno(db.Model):
     telefone = db.Column(db.String(255), unique=True, nullable=False)
     email = db.Column(db.String(255), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
-    permissao = db.Column(db.String(255), nullable=False, default='Aluno')
+    permissao = db.Column(db.String(255), nullable=False, default='aluno')
     projetos = db.relationship('AlunoProjeto', back_populates='aluno')
 
 
@@ -24,8 +24,9 @@ class Professor(db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
     aprovado = db.Column(db.Boolean, nullable=False, default=False)
-    permissao = db.Column(db.String(255), nullable=False, default='Professor')
-    projetos_propostos = db.relationship('Projeto', back_populates='proponente')
+    permissao = db.Column(db.String(255), nullable=False, default='professor')
+
+    projetos_propostos = db.relationship('Projeto', back_populates='professor')
 
 
 class Projeto(db.Model):
@@ -33,19 +34,34 @@ class Projeto(db.Model):
     nome = db.Column(db.String(255), nullable=False)
     descricao = db.Column(db.String(255), nullable=False)
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    professor_id = db.Column(db.Integer, db.ForeignKey('professor.id'), nullable=False)
-    aprovado = db.Column(db.Boolean, default=False, nullable=False)
-    alunos_cadastrados = db.relationship('AlunoProjeto', back_populates='projeto')
-    proponente = db.relationship('Professor', back_populates='projetos_propostos')
-    edital_pdf = db.Column(db.String(255), nullable=True)  # Adicionando campo para armazenar o nome do arquivo PDF
 
+    professor_id = db.Column(db.Integer, db.ForeignKey('professor.id'), nullable=False)
+    professor = db.relationship('Professor', back_populates='projetos_propostos')
+
+    aprovado = db.Column(db.Boolean, nullable=False)
+
+    alunos_cadastrados = db.relationship('AlunoProjeto', back_populates='projeto')
+
+    edital_pdf = db.Column(db.String(255), nullable=True)
+
+
+class Edital(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(255), nullable=False)
+    descricao = db.Column(db.String(255), nullable=False)
+    data_criacao = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    admin_id = db.Column(db.Integer, db.ForeignKey('admin.id'), nullable=False)
+    edital_pdf = db.Column(db.String(255), nullable=False)
 
 
 class AlunoProjeto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+
     aluno_id = db.Column(db.Integer, db.ForeignKey('aluno.id'), nullable=False)
     projeto_id = db.Column(db.Integer, db.ForeignKey('projeto.id'), nullable=False)
+
     aprovado = db.Column(db.Boolean, default=False, nullable=False)
+
     aluno = db.relationship('Aluno', back_populates='projetos')
     projeto = db.relationship('Projeto', back_populates='alunos_cadastrados')
 

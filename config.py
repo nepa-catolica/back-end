@@ -1,3 +1,6 @@
+from urllib.parse import quote
+
+
 class Config:
     SECRET_KEY = '7265c9aa4297a05c0b7ded86bd2e76f98b244ef5699bfbf71cefd924a66081a9'
     SQLALCHEMY_DATABASE_URI = 'postgresql+psycopg2://postgres:admin@localhost:5432/nepa'

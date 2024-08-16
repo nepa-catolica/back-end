@@ -1,6 +1,5 @@
 from argon2 import PasswordHasher, exceptions
 from flask_jwt_extended import create_access_token
-from sqlalchemy import or_
 
 from ..extensions import db
 from ..models import Aluno, Professor, Admin
@@ -56,39 +55,8 @@ class AuthService:
         db.session.add(professor)
         db.session.commit()
 
+
         return professor
-
-    @staticmethod
-    def aprovar_professor(professor_id):
-        professor = Professor.query.get(professor_id)
-
-        if professor:
-            professor.aprovado = True
-            db.session.commit()
-            return professor
-
-        return None
-
-    @staticmethod
-    def rejeitar_professor(professor_id):
-        professor = Professor.query.get(professor_id)
-
-        if professor:
-            professor.aprovado = False
-            db.session.commit()
-            return professor
-
-        return None
-
-    @staticmethod
-    def listar_professor_pendentes():
-        professors = Professor.query.filter(aprovado=False).all()
-        return professors
-
-    @staticmethod
-    def listar_professores_aprovados():
-        professors = Professor.query.filter(aprovado=True).all()
-        return professors
 
     @staticmethod
     def login(identifier, password):

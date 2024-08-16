@@ -1,6 +1,9 @@
+import threading
+
 from flask import Flask
 from config import Config
 from .extensions import db, jwt, migrate
+
 
 def create_app():
     app = Flask(__name__)
