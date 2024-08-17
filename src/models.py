@@ -38,7 +38,7 @@ class Projeto(db.Model):
     professor_id = db.Column(db.Integer, db.ForeignKey('professor.id'), nullable=False)
     professor = db.relationship('Professor', back_populates='projetos_propostos')
 
-    aprovado = db.Column(db.Boolean, nullable=False)
+    aprovado = db.Column(db.Boolean, default=False, nullable=False)
 
     alunos_cadastrados = db.relationship('AlunoProjeto', back_populates='projeto')
 
