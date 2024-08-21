@@ -59,6 +59,15 @@ class AuthService:
         return professor
 
     @staticmethod
+    def checkProfessor(identifier):
+        professor = Professor.query.filter(Professor.matricula == identifier).first() or Professor.query.filter(Professor.email == identifier).first()
+
+        if professor and not professor.aprovado:
+            return professor
+
+        return None
+
+    @staticmethod
     def login(identifier, password):
         if identifier.isdigit():
             user = Professor.query.filter(
@@ -76,9 +85,6 @@ class AuthService:
             ).first()
 
         if user and AuthService.check_password(user.password, password):
-
-            if isinstance(user, Professor) and not user.aprovado:
-                return None
 
             access_token = create_access_token(identity={'email': user.email, 'role': user.permissao})
 

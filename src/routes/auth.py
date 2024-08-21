@@ -9,12 +9,16 @@ def login():
     identifier = data['identifier']
     password = data['password']
 
+    checkProf = AuthService.checkProfessor(identifier)
     access_token = AuthService.login(identifier, password)
 
-    if access_token:
-        return jsonify(access_token=access_token), 200
+    if not access_token:
+        return jsonify({'error': 'Invalid credentials'}), 401
 
-    return jsonify({"message": "Invalid credentials or professor not approved"}), 401
+    if checkProf:
+        return jsonify({"error": "Invalid not approved"}), 401
+
+    return jsonify(access_token=access_token), 200
 
 @bp.route('/api/register', methods=['POST'])
 def register():
