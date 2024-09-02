@@ -4,24 +4,10 @@ from flask import current_app
 from werkzeug.utils import secure_filename
 
 from ..extensions import db
-from ..models import Edital, Professor, Admin
+from ..models import  Professor, Admin
 
 
 class AdminService:
-
-    @staticmethod
-    def edital_selecao(nome, descricao, admin_id, arquivo_pdf=None):
-        edital = Edital(nome=nome, descricao=descricao, admin_id=admin_id)
-
-        if arquivo_pdf:
-            filename = secure_filename(arquivo_pdf.filename)
-            arquivo_pdf.save(os.path.join(current_app.config['UPLOAD_FOLDER'], filename))
-            edital.edital_pdf = filename
-
-        db.session.add(edital)
-        db.session.commit()
-
-        return edital
 
     @staticmethod
     def aprovar_professor(professor_id):

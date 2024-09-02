@@ -31,28 +31,40 @@ class Professor(db.Model):
 
 class Projeto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(255), nullable=False)
-    descricao = db.Column(db.String(255), nullable=False)
-    data_criacao = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     professor_id = db.Column(db.Integer, db.ForeignKey('professor.id'), nullable=False)
     professor = db.relationship('Professor', back_populates='projetos_propostos')
 
+    titulacao = db.Column(db.String(255), nullable=False)
+    curso = db.Column(db.String(255), nullable=False)
+
+    titulo = db.Column(db.String(255), nullable=False)
+    linhaDePesquisa = db.Column(db.String(255), nullable=False)
+    situacao = db.Column(db.String(255), nullable=False)
+
+    descricao = db.Column(db.String(255), nullable=False)
+
+    palavrasChave = db.Column(db.String(255), nullable=False)
+
+    localizacao = db.Column(db.String(255), nullable=False)
+    populacao = db.Column(db.String(255), nullable=False)
+
+    justificativa = db.Column(db.String(255), nullable=False)
+    objetivoGeral = db.Column(db.String(255), nullable=False)
+    objetivoEspecifico = db.Column(db.String(255), nullable=False)
+
+    metodologia = db.Column(db.String(255), nullable=False)
+    cronogramaDeAtividade = db.Column(db.String(255), nullable=False)
+
+    referencias = db.Column(db.String(255), nullable=False)
+
+    termos = db.Column(db.Boolean, nullable=False, default=False)
+
+    data_criacao = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
     aprovado = db.Column(db.Boolean, default=False, nullable=False)
 
     alunos_cadastrados = db.relationship('AlunoProjeto', back_populates='projeto')
-
-    edital_pdf = db.Column(db.String(255), nullable=True)
-
-
-class Edital(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(255), nullable=False)
-    descricao = db.Column(db.String(255), nullable=False)
-    data_criacao = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    admin_id = db.Column(db.Integer, db.ForeignKey('admin.id'), nullable=False)
-    edital_pdf = db.Column(db.String(255), nullable=False)
-
 
 class AlunoProjeto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
