@@ -60,7 +60,11 @@ class AuthService:
 
     @staticmethod
     def checkProfessor(identifier):
-        professor = Professor.query.filter(Professor.matricula == identifier).first() or Professor.query.filter(Professor.email == identifier).first()
+        try:
+            matricula = int(identifier)
+            professor = Professor.query.filter_by(matricula=matricula).first()
+        except ValueError:
+            professor = Professor.query.filter_by(email=identifier).first()
 
         if professor and not professor.aprovado:
             return professor
@@ -69,29 +73,31 @@ class AuthService:
 
     @staticmethod
     def login(identifier, password):
+        user = None
+
         if identifier.isdigit():
-            user = Professor.query.filter(
-                Professor.matricula == int(identifier)
-            ).first() or Aluno.query.filter(
-                Aluno.matricula == int(identifier)
-            ).first()
+            matricula = int(identifier)
+            user = Professor.query.filter_by(matricula=matricula).first() or \
+                   Aluno.query.filter_by(matricula=matricula).first()
         else:
-            user = Admin.query.filter(
-                Admin.email == identifier
-            ).first() or Professor.query.filter(
-                Professor.email == identifier
-            ).first() or Aluno.query.filter(
-                Aluno.email == identifier
-            ).first()
+            user = Admin.query.filter_by(email=identifier).first() or \
+                   Professor.query.filter_by(email=identifier).first() or \
+                   Aluno.query.filter_by(email=identifier).first()
 
         if user and AuthService.check_password(user.password, password):
+            role = None
+            if isinstance(user, Admin):
+                role = 'admin'
+            elif isinstance(user, Professor):
+                role = 'professor'
+            elif isinstance(user, Aluno):
+                role = 'aluno'
 
-            access_token = create_access_token(identity={'email': user.email, 'role': user.permissao})
+            access_token = create_access_token(identity={'matricula': user.matricula, 'email': user.email, 'role': role})
 
             return access_token
 
         return None
-
     @staticmethod
     def check_password(hashed_password, password):
         try:

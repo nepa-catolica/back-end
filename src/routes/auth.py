@@ -6,17 +6,19 @@ bp = Blueprint('auth', __name__)
 @bp.route('/api/login', methods=['POST'])
 def login():
     data = request.get_json()
-    identifier = data['identifier']
-    password = data['password']
+    identifier = data.get('identifier')
+    password = data.get('password')
+
+    if not identifier or not password:
+        return jsonify({'error': 'Identifier and password are required'}), 400
 
     checkProf = AuthService.checkProfessor(identifier)
-    access_token = AuthService.login(identifier, password)
+    if checkProf:
+        return jsonify({"error": "Professor account not approved"}), 401
 
+    access_token = AuthService.login(identifier, password)
     if not access_token:
         return jsonify({'error': 'Invalid credentials'}), 401
-
-    if checkProf:
-        return jsonify({"error": "Invalid not approved"}), 401
 
     return jsonify(access_token=access_token), 200
 

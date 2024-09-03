@@ -31,9 +31,10 @@ class Professor(db.Model):
 
 class Projeto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-
     professor_id = db.Column(db.Integer, db.ForeignKey('professor.id'), nullable=False)
     professor = db.relationship('Professor', back_populates='projetos_propostos')
+
+    vagas = db.Column(db.Integer, nullable=False, default=0)
 
     titulacao = db.Column(db.String(255), nullable=False)
     curso = db.Column(db.String(255), nullable=False)
