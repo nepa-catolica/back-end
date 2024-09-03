@@ -86,14 +86,19 @@ class AuthService:
 
         if user and AuthService.check_password(user.password, password):
             role = None
+            identifier_payload = {'email': user.email}
             if isinstance(user, Admin):
                 role = 'Admin'
             elif isinstance(user, Professor):
                 role = 'professor'
+                identifier_payload['matricula'] = user.matricula
             elif isinstance(user, Aluno):
                 role = 'aluno'
+                identifier_payload['matricula'] = user.matricula
 
-            access_token = create_access_token(identity={'matricula': user.matricula, 'email': user.email, 'role': role})
+            identifier_payload['role'] = role
+
+            access_token = create_access_token(identity=identifier_payload)
 
             return access_token
 
