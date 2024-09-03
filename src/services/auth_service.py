@@ -87,7 +87,7 @@ class AuthService:
         if user and AuthService.check_password(user.password, password):
             role = None
             if isinstance(user, Admin):
-                role = 'admin'
+                role = 'Admin'
             elif isinstance(user, Professor):
                 role = 'professor'
             elif isinstance(user, Aluno):
