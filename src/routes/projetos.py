@@ -1,89 +1,39 @@
+from datetime import datetime
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-
-from ..models import Professor
-from ..models import Projeto
-
-from ..services.project_service import ProjectService
+from sqlalchemy.exc import SQLAlchemyError
+from ..models import Professor, Projeto
+from ..services.project_service import ProjetoService
 
 bp = Blueprint('projetos', __name__)
 
 @bp.route('api/create', methods=['POST'])
 @jwt_required()
 def create_projeto():
-    data = request.get_json()
-    current_user = get_jwt_identity()
-
-    professor = Professor.query.filter(Professor.email == current_user['email']).first()
-
-    if professor.permissao != 'professor':
-        return jsonify({'msg': 'Unauthorized'}), 401
-
-    if not professor or not professor.aprovado:
-        return jsonify({'msg': 'Acesso negado! Professor não aprovado!'}), 401
-
-    titulacao = data['titulacao']
-    curso = data['curso']
-    titulo = data['titulo']
-    linhaDePesquisa = data['linhaDePesquisa']
-    situacao = data['situacao']
-    descricao = data['descricao']
-    palavrasChave = data['palavrasChave']
-    localizacao = data['localizacao']
-    populacao = data['populacao']
-    justificativa = data['justificativa']
-    objetivoGeral = data['objetivoGeral']
-    objetivoEspecifico = data['objetivoEspecifico']
-    metodologia = data['metodologia']
-    cronogramaDeAtividade = data['cronogramaDeAtividade']
-    referencias = data['referencias']
-    termos = data['termos']
-
-    campos = [titulacao, curso, titulo, linhaDePesquisa, situacao, descricao, palavrasChave, localizacao, populacao, justificativa, objetivoGeral, objetivoEspecifico, metodologia, cronogramaDeAtividade, referencias, termos]
-
-
-    for x in range(len(campos)):
-        if not campos[x]:
-            return jsonify({'msg': 'Não foi possivel prosseguir, pois existem campos vazios'}), 400
-
     try:
-        novo_projeto = ProjectService.register_projeto(professor.id, titulacao, curso, titulo, linhaDePesquisa, situacao, descricao, palavrasChave, localizacao, populacao, justificativa, objetivoGeral, objetivoEspecifico, metodologia, cronogramaDeAtividade, referencias, termos)
-        return jsonify({'msg': 'Projeto registrado com sucesso!'}), 201
+        data = request.get_json()
+        if not data:
+            return jsonify({'msg': 'Nenhum dado foi fornecido'}), 400
+
+        current_user = get_jwt_identity()
+        professor = Professor.query.filter(Professor.email == current_user['email']).first()
+
+        if not professor or professor.permissao != 'professor' or not professor.aprovado:
+            return jsonify({'msg': 'Unauthorized'}), 401
+
+        campos_obrigatorios = ['titulacao', 'curso', 'titulo', 'linhaDePesquisa', 'situacao', 'descricao',
+                               'palavrasChave', 'localizacao', 'populacao', 'justificativa', 'objetivoGeral',
+                               'objetivoEspecifico', 'metodologia', 'cronogramaDeAtividade', 'referencias', 'termos']
+
+        for campo in campos_obrigatorios:
+            if not data.get(campo):
+                return jsonify({'msg': f'O campo "{campo}" é obrigatório e não pode estar vazio'}), 400
+
+        response = ProjetoService.register_projeto(professor.id, **data)
+        return jsonify({'msg': response['msg']}), response['status']
 
     except Exception as e:
-        return jsonify({'msg': str(e)}), 400
-
-# def create_projeto():
-#     data = request.get_json()
-#     current_user = get_jwt_identity()
-#
-#     professor = Professor.query.filter(Professor.email == current_user['email']).first()
-#
-#     if professor.permissao != 'professor':
-#         return jsonify({'msg': 'Unauthorized'}), 401
-#
-#     if not professor or not professor.aprovado:
-#         return jsonify({'msg': "Acesso negado: Professor não aprovado"}), 403
-#
-#     nome = data['nome']
-#     descricao = data['descricao']
-#     arquivo_pdf = data.get('edital_pdf')
-#
-#     if not nome or not descricao:
-#         return jsonify({"message": "Nome e descrição são obrigatórios"}), 400
-#
-#     try:
-#         novo_projeto = ProjectService.register_project(nome, descricao, professor.id, arquivo_pdf)
-#         return jsonify({'msg': 'Projeto registrado com sucesso', 'projeto': {
-#             'id': novo_projeto.id,
-#             'nome': novo_projeto.nome,
-#             'descricao': novo_projeto.descricao,
-#             'data_criacao': novo_projeto.data_criacao,
-#             'edital_pdf': novo_projeto.edital_pdf,
-#         }}), 201
-#
-#     except Exception as e:
-#         return jsonify({"message": "Erro ao criar projeto", "error": str(e)}), 400
+        return jsonify({'msg': f'Ocorreu um erro inesperado: {str(e)}'}), 500
 
 @bp.route('/api/listar/projetos_aprovados', methods=['GET'])
 @jwt_required()
@@ -92,7 +42,7 @@ def list_projects_aprovado():
         projetos = Projeto.query.filter(Projeto.aprovado == True).all()
 
         if not projetos:
-            return jsonify({'message': 'Não existem projetos aprovados ou estão em processo de aprovação'}), 400
+            return jsonify({'message': 'Não existem projetos aprovados ou estão em processo de aprovação'}), 404
 
         projetos_data = [{
             'id': projeto.id,
@@ -105,5 +55,61 @@ def list_projects_aprovado():
 
         return jsonify(projetos_data), 200
 
+    except SQLAlchemyError as e:
+        return jsonify({'message': 'Erro ao acessar o banco de dados', 'error': str(e)}), 500
+
     except Exception as e:
-        return jsonify({'message': 'Erro ao listar projetos', 'error': str(e)}), 400
+        return jsonify({'message': f'Ocorreu um erro inesperado: {str(e)}'}), 500
+
+@bp.route('/api/editar/projeto', methods=['PUT'])
+@jwt_required()
+def editar_projeto():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'msg': 'Nenhum dado foi fornecido'}), 400
+
+        current_user = get_jwt_identity()
+        projeto_id = data.get('projeto_id')
+        if not projeto_id:
+            return jsonify({'msg': 'O ID do projeto é obrigatório'}), 400
+
+        campos_obrigatorios = ['titulacao', 'curso', 'titulo', 'linhaDePesquisa', 'situacao', 'descricao',
+                               'palavrasChave', 'localizacao', 'populacao', 'justificativa', 'objetivoGeral',
+                               'objetivoEspecifico', 'metodologia', 'cronogramaDeAtividade', 'referencias', 'termos']
+
+        for campo in campos_obrigatorios:
+            if not data.get(campo):
+                return jsonify({'msg': f'O campo "{campo}" é obrigatório e não pode estar vazio'}), 400
+
+        response = ProjetoService.edit_projeto(
+            user_email=current_user['email'],
+            projeto_id=projeto_id,
+            titulacao=data.get('titulacao'),
+            curso=data.get('curso'),
+            titulo=data.get('titulo'),
+            linhaDePesquisa=data.get('linhaDePesquisa'),
+            situacao=data.get('situacao'),
+            descricao=data.get('descricao'),
+            palavrasChave=data.get('palavrasChave'),
+            localizacao=data.get('localizacao'),
+            populacao=data.get('populacao'),
+            justificativa=data.get('justificativa'),
+            objetivoGeral=data.get('objetivoGeral'),
+            objetivoEspecifico=data.get('objetivoEspecifico'),
+            metodologia=data.get('metodologia'),
+            cronogramaDeAtividade=data.get('cronogramaDeAtividade'),
+            referencias=data.get('referencias'),
+            termos=data.get('termos')
+        )
+
+        return jsonify({'msg': response['msg']}), response['status']
+
+    except KeyError as e:
+        return jsonify({'msg': f'Campo obrigatório ausente: {str(e)}'}), 400
+
+    except ValueError as e:
+        return jsonify({'msg': f'Valor inválido: {str(e)}'}), 400
+
+    except Exception as e:
+        return jsonify({'msg': f'Ocorreu um erro inesperado: {str(e)}'}), 500

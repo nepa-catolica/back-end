@@ -1,5 +1,5 @@
 from .extensions import db
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 class Aluno(db.Model):
@@ -66,6 +66,11 @@ class Projeto(db.Model):
     aprovado = db.Column(db.Boolean, default=False, nullable=False)
 
     alunos_cadastrados = db.relationship('AlunoProjeto', back_populates='projeto')
+
+    data_limite_edicao = db.Column(db.DateTime, nullable=True)
+
+    def set_data_limite_edicao(self, dias_para_edicao=2):
+        self.data_limite_edicao = self.data_criacao + timedelta(days=dias_para_edicao)
 
 class AlunoProjeto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
