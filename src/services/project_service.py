@@ -7,7 +7,6 @@ from flask import current_app
 from ..extensions import db
 
 class ProjetoService:
-
     @staticmethod
     def register_projeto(professor_id, titulacao, curso, titulo, linhaDePesquisa, situacao, descricao, palavrasChave,
                          localizacao, populacao, justificativa, objetivoGeral, objetivoEspecifico, metodologia,
@@ -33,6 +32,8 @@ class ProjetoService:
                 termos=termos
             )
 
+            projeto.set_data_limite_edicao()  # Set the edit limit date
+
             db.session.add(projeto)
             db.session.commit()
 
@@ -41,10 +42,6 @@ class ProjetoService:
         except SQLAlchemyError as e:
             db.session.rollback()
             return {'msg': f'Erro ao registrar projeto no banco de dados: {str(e)}', 'status': 500}
-
-        except Exception as e:
-            db.session.rollback()
-            return {'msg': f'Ocorreu um erro inesperado ao registrar o projeto: {str(e)}', 'status': 500}
 
     @staticmethod
     def edit_projeto(user_email, projeto_id, titulacao, curso, titulo, linhaDePesquisa, situacao, descricao,
@@ -58,6 +55,9 @@ class ProjetoService:
             projeto = Projeto.query.filter_by(id=projeto_id, professor_id=professor.id).first()
             if not projeto:
                 return {'msg': 'Projeto não encontrado ou você não tem permissão para editá-lo'}, 404
+
+            if projeto.data_limite_edicao and datetime.utcnow() > projeto.data_limite_edicao:
+                return {'msg': 'O período para editar este projeto expirou'}, 403
 
             projeto.titulacao = titulacao
             projeto.curso = curso
