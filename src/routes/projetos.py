@@ -1,39 +1,37 @@
-from datetime import datetime
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError
-from ..models import Professor, Projeto
+from src.utils.models import Professor, Projeto
 from ..services.project_service import ProjetoService
+from src.utils.schemas import ProjetoSchema
 
 bp = Blueprint('projetos', __name__)
 
-@bp.route('api/create', methods=['POST'])
+@bp.route('/api/create', methods=['POST'])
 @jwt_required()
 def create_projeto():
     try:
         data = request.get_json()
         if not data:
-            return jsonify({'msg': 'Nenhum dado foi fornecido'}), 400
+            return jsonify({'message': 'Nenhum dado foi fornecido'}), 400
 
         current_user = get_jwt_identity()
         professor = Professor.query.filter(Professor.email == current_user['email']).first()
 
         if not professor or professor.permissao != 'professor' or not professor.aprovado:
-            return jsonify({'msg': 'Unauthorized'}), 401
+            return jsonify({'message': 'Unauthorized'}), 401
 
-        campos_obrigatorios = ['titulacao', 'curso', 'titulo', 'linhaDePesquisa', 'situacao', 'descricao',
-                               'palavrasChave', 'localizacao', 'populacao', 'justificativa', 'objetivoGeral',
-                               'objetivoEspecifico', 'metodologia', 'cronogramaDeAtividade', 'referencias', 'termos']
-
-        for campo in campos_obrigatorios:
-            if not data.get(campo):
-                return jsonify({'msg': f'O campo "{campo}" é obrigatório e não pode estar vazio'}), 400
+        schema = ProjetoSchema()
+        errors = schema.validate(data)
+        if errors:
+            return jsonify(errors), 400
 
         response = ProjetoService.register_projeto(professor.id, **data)
-        return jsonify({'msg': response['msg']}), response['status']
+        return jsonify({'message': response['msg']}), response['status']
 
     except Exception as e:
-        return jsonify({'msg': f'Ocorreu um erro inesperado: {str(e)}'}), 500
+        return jsonify({'message': f'Ocorreu um erro inesperado: {str(e)}'}), 500
+
 
 @bp.route('/api/listar/projetos_aprovados', methods=['GET'])
 @jwt_required()
@@ -74,7 +72,7 @@ def editar_projeto():
         if not projeto_id:
             return jsonify({'msg': 'O ID do projeto é obrigatório'}), 400
 
-        campos_obrigatorios = ['titulacao', 'curso', 'titulo', 'linhaDePesquisa', 'situacao', 'descricao',
+        campos_obrigatorios = ['vagas','titulacao', 'curso', 'titulo', 'linhaDePesquisa', 'situacao', 'descricao',
                                'palavrasChave', 'localizacao', 'populacao', 'justificativa', 'objetivoGeral',
                                'objetivoEspecifico', 'metodologia', 'cronogramaDeAtividade', 'referencias', 'termos']
 
@@ -85,6 +83,7 @@ def editar_projeto():
         response = ProjetoService.edit_projeto(
             user_email=current_user['email'],
             projeto_id=projeto_id,
+            vagas=data.get('vagas'),
             titulacao=data.get('titulacao'),
             curso=data.get('curso'),
             titulo=data.get('titulo'),

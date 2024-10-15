@@ -1,19 +1,17 @@
-import os
 from datetime import datetime
 from sqlalchemy.exc import SQLAlchemyError
-from ..models import Projeto, Professor
-from werkzeug.utils import secure_filename
-from flask import current_app
-from ..extensions import db
+from src.utils.models import Projeto, Professor
+from src.utils.extensions import db
 
 class ProjetoService:
     @staticmethod
-    def register_projeto(professor_id, titulacao, curso, titulo, linhaDePesquisa, situacao, descricao, palavrasChave,
+    def register_projeto(professor_id, vagas, titulacao, curso, titulo, linhaDePesquisa, situacao, descricao, palavrasChave,
                          localizacao, populacao, justificativa, objetivoGeral, objetivoEspecifico, metodologia,
                          cronogramaDeAtividade, referencias, termos):
         try:
             projeto = Projeto(
                 professor_id=professor_id,
+                vagas = vagas,
                 titulacao=titulacao,
                 curso=curso,
                 titulo=titulo,
@@ -32,7 +30,7 @@ class ProjetoService:
                 termos=termos
             )
 
-            projeto.set_data_limite_edicao()  # Set the edit limit date
+            projeto.set_data_limite_edicao()
 
             db.session.add(projeto)
             db.session.commit()
@@ -44,7 +42,7 @@ class ProjetoService:
             return {'msg': f'Erro ao registrar projeto no banco de dados: {str(e)}', 'status': 500}
 
     @staticmethod
-    def edit_projeto(user_email, projeto_id, titulacao, curso, titulo, linhaDePesquisa, situacao, descricao,
+    def edit_projeto(user_email, projeto_id, vagas, titulacao, curso, titulo, linhaDePesquisa, situacao, descricao,
                      palavrasChave, localizacao, populacao, justificativa, objetivoGeral, objetivoEspecifico,
                      metodologia, cronogramaDeAtividade, referencias, termos):
         try:
@@ -57,8 +55,12 @@ class ProjetoService:
                 return {'msg': 'Projeto não encontrado ou você não tem permissão para editá-lo'}, 404
 
             if projeto.data_limite_edicao and datetime.utcnow() > projeto.data_limite_edicao:
-                return {'msg': 'O período para editar este projeto expirou'}, 403
+                if not projeto.aprovado:
+                    return {'msg': 'O período para editar este projeto expirou'}, 403
+                else:
+                    return {'msg': 'Este projeto já foi aprovado e não pode mais ser editado'}, 403
 
+            projeto.vagas = vagas
             projeto.titulacao = titulacao
             projeto.curso = curso
             projeto.titulo = titulo

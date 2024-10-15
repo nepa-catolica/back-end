@@ -10,15 +10,15 @@ def login():
     password = data.get('password')
 
     if not identifier or not password:
-        return jsonify({'error': 'Identifier and password are required'}), 400
+        return jsonify({'message': 'Identifier and password are required'}), 400
 
     checkProf = AuthService.checkProfessor(identifier)
     if checkProf:
-        return jsonify({"error": "Professor account not approved"}), 401
+        return jsonify({"message": "Professor account not approved"}), 401
 
     access_token = AuthService.login(identifier, password)
     if not access_token:
-        return jsonify({'error': 'Invalid credentials'}), 401
+        return jsonify({'message': 'Invalid credentials'}), 401
 
     return jsonify(access_token=access_token), 200
 
@@ -39,7 +39,7 @@ def register():
             )
             return jsonify({"message": "Aluno registrado com sucesso", "aluno": novo_aluno.nome}), 201
         except Exception as e:
-            return jsonify({"message": "Erro ao registrar aluno", "error": str(e)}), 400
+            return jsonify({"message": "Erro ao registrar aluno", "error": "Erro interno, tente novamente mais tarde"}), 500
 
     elif role == 'professor':
         try:
@@ -54,7 +54,7 @@ def register():
             return jsonify({"message": "Professor registrado com sucesso, aguardando aprovação",
                             "professor": novo_professor.nome}), 201
         except Exception as e:
-            return jsonify({"message": "Erro ao registrar professor", "error": str(e)}), 400
+            return jsonify({"message": "Erro ao registrar professor", "error": "Erro interno, tente novamente mais tarde"}), 500
 
     else:
         return jsonify({"message": "Role inválido"}), 400
