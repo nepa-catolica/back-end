@@ -64,6 +64,7 @@ def rejeitar_professor(professor_id):
 
 @bp.route('/api/lista/professores-pendentes', methods=['GET'])
 @jwt_required()
+@role_required('admin')
 def listar_professores_pendentes():
     current_user = get_jwt_identity()
     if current_user['role'] != 'admin':
@@ -82,6 +83,7 @@ def listar_professores_pendentes():
 
 @bp.route('/api/lista/professores-aprovados', methods=['GET'])
 @jwt_required()
+@role_required('admin')
 def listar_professores_aprovados():
     current_user = get_jwt_identity()
     if current_user['role'] != 'admin':
@@ -100,6 +102,7 @@ def listar_professores_aprovados():
 
 @bp.route('/api/aprovar/projeto/<int:projeto_id>', methods=['POST'])
 @jwt_required()
+@role_required('admin')
 def aprovar_projeto(projeto_id):
     current_user = get_jwt_identity()
 
@@ -128,6 +131,7 @@ def aprovar_projeto(projeto_id):
 
 @bp.route('/api/aprovar/projeto/professor/<int:professor_id>', methods=['POST'])
 @jwt_required()
+@role_required('admin')
 def aprovar_projeto_por_professor(professor_id):
     current_user = get_jwt_identity()
 
