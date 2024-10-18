@@ -83,10 +83,10 @@ def listar_professores_pendentes():
 
 @bp.route('/api/lista/professores-aprovados', methods=['GET'])
 @jwt_required()
-@role_required('admin')
+@role_required('Admin')
 def listar_professores_aprovados():
     current_user = get_jwt_identity()
-    if current_user['role'] != 'admin':
+    if current_user['role'] != 'Admin':
         return jsonify({"message": "Access denied"}), 403
 
     try:

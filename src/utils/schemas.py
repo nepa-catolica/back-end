@@ -18,3 +18,13 @@ class ProjetoSchema(Schema):
     cronogramaDeAtividade = fields.String(required=True, validate=validate.Length(min=1, error="Cronograma de atividades é obrigatório"))
     referencias = fields.String(required=True, validate=validate.Length(min=1, error="Referências são obrigatórias"))
     termos = fields.Boolean(required=True, error_messages={"required": "É necessário aceitar os termos"})
+
+class AlunoSchema(Schema):
+    id = fields.Int()
+    nome = fields.Str()
+    matricula = fields.Int()
+    curso = fields.Str()
+    data_ingresso = fields.DateTime()
+    telefone = fields.Str()
+    email = fields.Str()
+    permissao = fields.Str()

@@ -1,9 +1,41 @@
 from datetime import datetime
 from sqlalchemy.exc import SQLAlchemyError
-from src.utils.models import Projeto, Professor
+from src.utils.models import Projeto, Professor, Aluno, AlunoProjeto
 from src.utils.extensions import db
 
 class ProjetoService:
+
+    @staticmethod
+    def register_aluno_projeto(matricula, projeto_id):
+        # Busca o aluno pela matrícula
+        aluno = Aluno.query.filter_by(matricula=matricula).first()
+
+        if not aluno:
+            return {'msg': 'Aluno não encontrado'}, 404
+
+        # Busca o projeto pelo ID
+        projeto = Projeto.query.filter_by(id=projeto_id).first()
+
+        if not projeto:
+            return {'msg': 'Projeto não encontrado'}, 404
+
+        # Verifica se o aluno já está cadastrado no projeto
+        aluno_projeto = AlunoProjeto.query.filter_by(aluno_id=aluno.id, projeto_id=projeto.id).first()
+
+        if aluno_projeto:
+            return {'msg': 'Aluno já está cadastrado neste projeto'}, 400
+
+        # Cadastrar o aluno no projeto
+        cadastro_aluno_projeto = AlunoProjeto(aluno_id=aluno.id, projeto_id=projeto.id)
+
+        db.session.add(cadastro_aluno_projeto)
+        db.session.commit()
+
+        return {'msg': 'Aluno cadastrado com sucesso no projeto', 'aluno_projeto': {
+            'aluno_id': cadastro_aluno_projeto.aluno_id,
+            'projeto_id': cadastro_aluno_projeto.projeto_id
+        }}, 201
+
     @staticmethod
     def register_projeto(professor_id, vagas, titulacao, curso, titulo, linhaDePesquisa, situacao, descricao, palavrasChave,
                          localizacao, populacao, justificativa, objetivoGeral, objetivoEspecifico, metodologia,
