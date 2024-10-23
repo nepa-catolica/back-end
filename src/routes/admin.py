@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from src.utils.models import Admin
+from src.utils.models import Admin, Projeto, Professor
 from ..services.admin_service import AdminService
 from src.utils.utils import role_required
 
@@ -60,6 +60,73 @@ def rejeitar_professor(professor_id):
     except Exception as e:
         return jsonify({"message": "Erro ao rejeitar professor", "error": 'Erro interno, tente novamente mais tarde'}), 500
 
+@bp.route('/api/professor/<int:professor_id>/detalhes', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def detalhes_professor(professor_id):
+    try:
+        professor = Professor.query.filter_by(id=professor_id).first()
+
+        if not professor:
+            return jsonify({'message': 'Professor não encontrado'}), 404
+
+        projetos = Projeto.query.filter_by(professor_id=professor_id).all()
+
+        professor_data = {
+            'id': professor.id,
+            'nome': professor.nome,
+            'email': professor.email,
+            'matricula': professor.matricula,
+            'curso': professor.curso,
+            'aprovado': professor.aprovado,
+        }
+
+        return jsonify({'professor': professor_data}), 200
+
+    except Exception as e:
+        return jsonify({'message': f'Erro ao obter detalhes do professor: {str(e)}'}), 500
+
+@bp.route('/api/projeto/<int:projeto_id>/detalhes', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def detalhes_projeto(projeto_id):
+    try:
+        projeto = Projeto.query.filter_by(id=projeto_id).first()
+
+        if not projeto:
+            return jsonify({'message': 'Projeto não encontrado'}), 404
+
+        projeto_data = {
+            'id': projeto.id,
+            'titulo': projeto.titulo,
+            'descricao': projeto.descricao,
+            'vagas': projeto.vagas,
+            'titulacao': projeto.titulacao,
+            'curso': projeto.curso,
+            'linhaDePesquisa': projeto.linhaDePesquisa,
+            'situacao': projeto.situacao,
+            'palavrasChave': projeto.palavrasChave,
+            'localizacao': projeto.localizacao,
+            'populacao': projeto.populacao,
+            'justificativa': projeto.justificativa,
+            'objetivoGeral': projeto.objetivoGeral,
+            'objetivoEspecifico': projeto.objetivoEspecifico,
+            'metodologia': projeto.metodologia,
+            'cronogramaDeAtividade': projeto.cronogramaDeAtividade,
+            'referencias': projeto.referencias,
+            'termos': projeto.termos,
+            'data_criacao': projeto.data_criacao.strftime('%Y-%m-%d'),
+            'aprovado': projeto.aprovado,
+            'professor': {
+                'id': projeto.professor.id,
+                'nome': projeto.professor.nome
+            } if projeto.professor else None
+        }
+
+        return jsonify({'projeto': projeto_data}), 200
+
+    except Exception as e:
+        return jsonify({'message': f'Erro ao obter detalhes do projeto: {str(e)}'}), 500
 
 
 @bp.route('/api/lista/professores-pendentes', methods=['GET'])
@@ -129,28 +196,31 @@ def aprovar_projeto(projeto_id):
         return jsonify({"message": "Erro ao aprovar o projeto", "error": str(e)}), 400
 
 
-@bp.route('/api/aprovar/projeto/professor/<int:professor_id>', methods=['POST'])
+@bp.route('/api/rejeitar/projeto/<int:projeto_id>', methods=['POST'])
 @jwt_required()
 @role_required('admin')
-def aprovar_projeto_por_professor(professor_id):
+def rejeitar_projeto(projeto_id):
     current_user = get_jwt_identity()
 
     if current_user['role'] != 'admin':
         return jsonify({"message": "Access denied"}), 403
 
     try:
-        projeto_aprovado = AdminService.aprovar_projeto_por_professor(professor_id)
+        projeto_rejeitado = AdminService.rejeitar_projeto(projeto_id)
 
-        if projeto_aprovado:
+        if projeto_rejeitado:
             return jsonify({
-                "message": "Projeto aprovado com sucesso",
+                "message": "Projeto rejeitado com sucesso",
                 "projeto": {
-                    "professor": projeto_aprovado.professor.nome,
-                    "titulo": projeto_aprovado.titulo,
-                    "descricao": projeto_aprovado.descricao
+                    "id": projeto_rejeitado.id,
+                    "titulo": projeto_rejeitado.titulo,
+                    "descricao": projeto_rejeitado.descricao,
+                    "data_criacao": projeto_rejeitado.data_criacao,
+                    "professor_id": projeto_rejeitado.professor_id
                 }
             }), 200
         else:
-            return jsonify({"message": "Nenhum projeto pendente para este professor ou professor não encontrado"}), 404
+            return jsonify({"message": "Projeto não encontrado"}), 404
+
     except Exception as e:
-        return jsonify({"message": "Erro ao aprovar o projeto", "error": str(e)}), 400
+        return jsonify({"message": "Erro ao rejeitar o projeto", "error": str(e)}), 400

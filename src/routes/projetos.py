@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError
-from src.utils.models import Professor, Projeto, Aluno
+from src.utils.models import Professor, Projeto, Aluno, AlunoProjeto
 from ..services.project_service import ProjetoService
 from src.utils.schemas import ProjetoSchema
 from src.utils.utils import role_required
@@ -32,6 +32,62 @@ def create_projeto():
 
     except Exception as e:
         return jsonify({'message': f'Ocorreu um erro inesperado: {str(e)}'}), 500
+
+@bp.route('/api/projeto/<int:projeto_id>/alunos', methods=['GET'])
+@jwt_required()
+@role_required('professor')
+def listar_alunos_projeto(projeto_id):
+    try:
+        projeto = Projeto.query.filter_by(id=projeto_id).first()
+
+        if not projeto:
+            return jsonify({'msg': 'Projeto não encontrado'}), 404
+
+        alunos_projeto = AlunoProjeto.query.filter_by(projeto_id=projeto_id).all()
+
+        if not alunos_projeto:
+            return jsonify({'msg': 'Nenhum aluno cadastrado neste projeto'}), 404
+
+        alunos_data = [
+            {
+                'aluno_id': p.aluno_id,
+                'nome': p.aluno.nome,
+                'matricula': p.aluno.matricula,
+                'curso': p.aluno.curso,
+                'aprovado': p.aprovado
+            }
+            for p in alunos_projeto
+        ]
+
+        return jsonify({'alunos': alunos_data}), 200
+
+    except Exception as e:
+        return jsonify({'msg': f'Ocorreu um erro: {str(e)}'}), 500
+
+
+@bp.route('/api/aprovar/<int:projeto_id>/aluno/<int:aluno_id>', methods=['POST'])
+@jwt_required()
+@role_required('professor')
+def aprovar_aluno_no_projeto(projeto_id, aluno_id):
+    try:
+        response, status_code = ProjetoService.aprovar_aluno_projeto(aluno_id, projeto_id)
+
+        if status_code == 200:
+            return jsonify(response), 200
+        else:
+            return jsonify(response), status_code
+
+    except Exception as e:
+        return jsonify({"message": f"Erro ao aprovar aluno no projeto: {str(e)}"}), 500
+
+
+
+@bp.route('/api/projeto/<int:projeto_id>/aluno/<int:aluno_id>/rejeitar', methods=['POST'])
+@jwt_required()
+@role_required('professor')
+def rejeitar_aluno_no_projeto(projeto_id, aluno_id):
+    response, status_code = ProjetoService.rejeitar_aluno_projeto(aluno_id, projeto_id)
+    return jsonify(response), status_code
 
 
 @bp.route('/api/listar/projeto/<int:projeto_id>', methods=['GET'])

@@ -64,11 +64,12 @@ class AdminService:
             return projeto
         return None
 
+
     @staticmethod
-    def aprovar_projeto_por_professor(professor_id):
-        projeto = Projeto.query.filter_by(professor_id=professor_id, aprovado=False).first()
+    def rejeitar_projeto(projeto_id):
+        projeto = Projeto.query.get(projeto_id)
         if projeto:
-            projeto.aprovado = True
+            projeto.aprovado = False
             db.session.commit()
             return projeto
         return None

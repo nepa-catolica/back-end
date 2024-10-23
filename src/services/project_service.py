@@ -7,28 +7,33 @@ class ProjetoService:
 
     @staticmethod
     def register_aluno_projeto(matricula, projeto_id):
-        # Busca o aluno pela matrícula
         aluno = Aluno.query.filter_by(matricula=matricula).first()
 
         if not aluno:
             return {'msg': 'Aluno não encontrado'}, 404
 
-        # Busca o projeto pelo ID
         projeto = Projeto.query.filter_by(id=projeto_id).first()
 
         if not projeto:
             return {'msg': 'Projeto não encontrado'}, 404
 
-        # Verifica se o aluno já está cadastrado no projeto
+        if not projeto.aprovado:
+            return {'msg': 'Projeto atual não está disponivel ou não foi aprovado.'}, 400
+
         aluno_projeto = AlunoProjeto.query.filter_by(aluno_id=aluno.id, projeto_id=projeto.id).first()
 
         if aluno_projeto:
             return {'msg': 'Aluno já está cadastrado neste projeto'}, 400
 
-        # Cadastrar o aluno no projeto
+        if projeto.vagas <= 0:
+            return {'msg': 'Não há vagas disponiveis para o projeto atual.'}, 400
+
         cadastro_aluno_projeto = AlunoProjeto(aluno_id=aluno.id, projeto_id=projeto.id)
 
         db.session.add(cadastro_aluno_projeto)
+
+        projeto.vagas -= 1
+
         db.session.commit()
 
         return {'msg': 'Aluno cadastrado com sucesso no projeto', 'aluno_projeto': {
@@ -37,13 +42,71 @@ class ProjetoService:
         }}, 201
 
     @staticmethod
+    def aprovar_aluno_projeto(aluno_id, projeto_id):
+
+        aluno = Aluno.query.filter_by(id=aluno_id).first()
+
+        if not aluno:
+            return {'msg': 'Aluno não encontrado'}, 404
+
+        projeto = Projeto.query.filter_by(id=projeto_id).first()
+
+        if not projeto:
+            return {'msg': 'Projeto não encontrado'}, 404
+
+        aluno_projeto = AlunoProjeto.query.filter_by(aluno_id=aluno.id, projeto_id=projeto.id).first()
+
+        if not aluno_projeto:
+            return {'msg': 'Aluno não está cadastrado neste projeto'}, 404
+
+        if aluno_projeto.aprovado:
+            return {'msg': 'Aluno já se encontra aprovado no projeto'}, 400
+
+        aluno_projeto.aprovado = True
+        db.session.commit()
+
+        aluno_projeto_data = {
+            'id': aluno_projeto.id,
+            'aluno_id': aluno_projeto.aluno_id,
+            'projeto_id': aluno_projeto.projeto_id,
+            'aprovado': aluno_projeto.aprovado
+        }
+
+        return {'msg': 'Aluno aprovado com sucesso no projeto', 'aluno_projeto': aluno_projeto_data}, 200
+
+    @staticmethod
+    def rejeitar_aluno_projeto(aluno_id, projeto_id):
+        try:
+            aluno = Aluno.query.filter_by(id=aluno_id).first()
+            if not aluno:
+                return {'msg': 'Aluno não encontrado'}, 404
+
+            projeto = Projeto.query.filter_by(id=projeto_id).first()
+            if not projeto:
+                return {'msg': 'Projeto não encontrado'}, 404
+
+            aluno_projeto = AlunoProjeto.query.filter_by(aluno_id=aluno.id, projeto_id=projeto.id).first()
+            if not aluno_projeto:
+                return {'msg': 'Aluno não está cadastrado neste projeto'}, 404
+
+            db.session.delete(aluno_projeto)
+            db.session.commit()
+
+            return {'msg': 'Aluno rejeitado e removido do projeto'}, 200
+
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            return {'msg': f'Erro ao rejeitar aluno do projeto: {str(e)}'}, 500
+
+
+    @staticmethod
     def register_projeto(professor_id, vagas, titulacao, curso, titulo, linhaDePesquisa, situacao, descricao, palavrasChave,
                          localizacao, populacao, justificativa, objetivoGeral, objetivoEspecifico, metodologia,
                          cronogramaDeAtividade, referencias, termos):
         try:
             projeto = Projeto(
                 professor_id=professor_id,
-                vagas = vagas,
+                vagas=vagas,
                 titulacao=titulacao,
                 curso=curso,
                 titulo=titulo,
