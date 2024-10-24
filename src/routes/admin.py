@@ -131,10 +131,10 @@ def detalhes_projeto(projeto_id):
 
 @bp.route('/api/lista/professores-pendentes', methods=['GET'])
 @jwt_required()
-@role_required('admin')
+@role_required('Admin')
 def listar_professores_pendentes():
     current_user = get_jwt_identity()
-    if current_user['role'] != 'admin':
+    if current_user['role'] != 'Admin':
         return jsonify({"message": "Access denied"}), 403
 
     try:
@@ -169,7 +169,7 @@ def listar_professores_aprovados():
 
 @bp.route('/api/aprovar/projeto/<int:projeto_id>', methods=['POST'])
 @jwt_required()
-@role_required('admin')
+@role_required('Admin')
 def aprovar_projeto(projeto_id):
     current_user = get_jwt_identity()
 

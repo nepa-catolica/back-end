@@ -13,6 +13,7 @@ bp = Blueprint('projetos', __name__)
 def create_projeto():
     try:
         data = request.get_json()
+        print(data)
         if not data:
             return jsonify({'message': 'Nenhum dado foi fornecido'}), 400
 
@@ -25,6 +26,7 @@ def create_projeto():
         schema = ProjetoSchema()
         errors = schema.validate(data)
         if errors:
+            print(errors)
             return jsonify(errors), 400
 
         response = ProjetoService.register_projeto(professor.id, **data)
@@ -189,9 +191,9 @@ def list_projects_pendentes():
             'data_limite_edicao': projeto.data_limite_edicao.strftime(
                 '%Y-%m-%d %H:%M:%S') if projeto.data_limite_edicao else None,
             'professor': {
-                'id': projeto.professor.id,
-                'nome': projeto.professor.nome,
-                'email': projeto.professor.email
+                'Id': projeto.professor.id,
+                'Nome': projeto.professor.nome,
+                'Email': projeto.professor.email
             } if projeto.professor else None
         } for projeto in projetos]
 
