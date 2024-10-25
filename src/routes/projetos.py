@@ -203,7 +203,7 @@ def list_projects_pendentes():
     except Exception as e:
         return jsonify({'message': f'Ocorreu um erro inesperado: {str(e)}'}), 500
 
-@bp.route('/api/editar/projeto', methods=['PUT'])
+@bp.route('/api/editar/projeto/<int:projeto_id>', methods=['PUT'])
 @jwt_required()
 def editar_projeto():
     try:
