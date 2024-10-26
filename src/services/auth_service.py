@@ -9,6 +9,9 @@ ph = PasswordHasher()
 
 
 class AuthService:
+    @staticmethod
+    def is_strong_password(password):
+        return len(password) >= 8 and any(c.isdigit() for c in password) and any(c.isalpha() for c in password)
 
     @staticmethod
     def create_user_aluno(nome, email, matricula, curso, telefone, password):
@@ -16,6 +19,9 @@ class AuthService:
             if not AuthService.is_strong_password(password):
                 return {'msg': 'Senha fraca. A senha deve conter ao menos 8 caracteres, incluindo letras e números.',
                         'status': 400}
+
+            if Aluno.query.filter_by(email=email).first() or Aluno.query.filter_by(matricula=matricula).first():
+                return {'msg': 'Email ou matrícula já cadastrados', 'status': 400}
 
             hashed_password = ph.hash(password)
 
@@ -44,6 +50,9 @@ class AuthService:
                 return {'msg': 'Senha fraca. A senha deve conter ao menos 8 caracteres, incluindo letras e números.',
                         'status': 400}
 
+            if Professor.query.filter_by(email=email).first() or Professor.query.filter_by(matricula=matricula).first():
+                return {'msg': 'Email ou matrícula já cadastrados', 'status': 400}
+
             hashed_password = ph.hash(password)
 
             professor = Professor(
@@ -58,8 +67,7 @@ class AuthService:
             db.session.add(professor)
             db.session.commit()
 
-            return {'msg': 'Professor criado com sucesso. Aguardando aprovação.', 'professor': professor.nome,
-                    'status': 201}
+            return {'msg': 'Professor criado com sucesso. Aguardando aprovação.', 'professor': professor.nome, 'status': 201}
 
         except SQLAlchemyError as e:
             db.session.rollback()
@@ -71,6 +79,9 @@ class AuthService:
             if not AuthService.is_strong_password(password):
                 return {'msg': 'Senha fraca. A senha deve conter ao menos 8 caracteres, incluindo letras e números.',
                         'status': 400}
+
+            if Admin.query.filter_by(email=email).first():
+                return {'msg': 'Email já cadastrado', 'status': 400}
 
             hashed_password = ph.hash(password)
 
@@ -163,6 +174,6 @@ class AuthService:
 
         return {'access_token': access_token, 'status': 200}
 
-    @staticmethod
-    def is_strong_password(password):
-        return bool(re.match(r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$', password))
+    # @staticmethod
+    # def is_strong_password(password):
+    #     return bool(re.match(r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$', password))

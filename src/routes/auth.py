@@ -21,7 +21,6 @@ def login():
         return jsonify({'message': 'Invalid credentials'}), 401
 
     return jsonify(access_token=access_token), 200
-
 @bp.route('/api/register', methods=['POST'])
 def register():
     data = request.get_json()
@@ -31,7 +30,7 @@ def register():
 
     if role == 'aluno':
         try:
-            novo_aluno = AuthService.create_user_aluno(
+            response = AuthService.create_user_aluno(
                 nome=data['nome'],
                 email=data['email'],
                 matricula=data['matricula'],
@@ -39,13 +38,13 @@ def register():
                 telefone=data['telefone'],
                 password=data['password']
             )
-            return jsonify({"message": "Aluno registrado com sucesso", "aluno": novo_aluno.nome}), 201
+            return jsonify(response), response['status']
         except Exception as e:
-            return jsonify({"message": "Erro ao registrar aluno", "error": "Erro interno, tente novamente mais tarde"}), 500
+            return jsonify({"message": "Erro ao registrar aluno", "error": str(e)}), 500
 
     elif role == 'professor':
         try:
-            novo_professor = AuthService.create_user_professor(
+            response = AuthService.create_user_professor(
                 nome=data['nome'],
                 email=data['email'],
                 matricula=data['matricula'],
@@ -53,10 +52,12 @@ def register():
                 telefone=data['telefone'],
                 password=data['password']
             )
-            return jsonify({"message": "Professor registrado com sucesso, aguardando aprovação",
-                            "professor": novo_professor.nome}), 201
+            if 'professor' in response:
+                return jsonify({"message": "Professor registrado com sucesso, aguardando aprovação",
+                                "professor": response['professor']}), response['status']
+            return jsonify(response), response['status']
         except Exception as e:
-            return jsonify({"message": "Erro ao registrar professor", "error": "Erro interno, tente novamente mais tarde"}), 500
+            return jsonify({"message": "Erro ao registrar professor", "error": str(e)}), 500
 
     else:
         return jsonify({"message": "Role inválido"}), 400

@@ -146,7 +146,8 @@ def list_projects_aprovado():
             'descricao': projeto.descricao,
             'alunos_cadastrados': projeto.alunos_cadastrados,
             'professor': projeto.professor.nome if projeto.professor else None,
-            'data_criacao': projeto.data_criacao
+            'data_criacao': projeto.data_criacao,
+            'vagas': projeto.vagas
         } for projeto in projetos]
 
         return jsonify(projetos_data), 200
@@ -191,9 +192,9 @@ def list_projects_pendentes():
             'data_limite_edicao': projeto.data_limite_edicao.strftime(
                 '%Y-%m-%d %H:%M:%S') if projeto.data_limite_edicao else None,
             'professor': {
-                'Id': projeto.professor.id,
-                'Nome': projeto.professor.nome,
-                'Email': projeto.professor.email
+                'id': projeto.professor.id,
+                'nome': projeto.professor.nome,
+                'email': projeto.professor.email
             } if projeto.professor else None
         } for projeto in projetos]
 
@@ -205,19 +206,24 @@ def list_projects_pendentes():
     except Exception as e:
         return jsonify({'message': f'Ocorreu um erro inesperado: {str(e)}'}), 500
 
-@bp.route('/api/editar/projeto', methods=['PUT'])
+@bp.route('/api/editar/projeto/<int:projeto_id>', methods=['PUT'])
 @jwt_required()
-def editar_projeto():
+def editar_projeto(projeto_id):
     try:
+        # Verifica se o projeto existe no banco de dados
+        projeto = Projeto.query.filter_by(id=projeto_id).first()
+        if not projeto:
+            return jsonify({'msg': 'Projeto não encontrado'}), 404
+
+        # Recupera os dados enviados no corpo da requisição
         data = request.get_json()
         if not data:
             return jsonify({'msg': 'Nenhum dado foi fornecido'}), 400
 
+        # Recupera o usuário atual a partir do token JWT
         current_user = get_jwt_identity()
-        projeto_id = data.get('projeto_id')
-        if not projeto_id:
-            return jsonify({'msg': 'O ID do projeto é obrigatório'}), 400
 
+        # Verifica os campos obrigatórios
         campos_obrigatorios = ['vagas','titulacao', 'curso', 'titulo', 'linhaDePesquisa', 'situacao', 'descricao',
                                'palavrasChave', 'localizacao', 'populacao', 'justificativa', 'objetivoGeral',
                                'objetivoEspecifico', 'metodologia', 'cronogramaDeAtividade', 'referencias', 'termos']
@@ -226,9 +232,9 @@ def editar_projeto():
             if not data.get(campo):
                 return jsonify({'msg': f'O campo "{campo}" é obrigatório e não pode estar vazio'}), 400
 
+        # Atualiza os campos do projeto com os dados recebidos
         response = ProjetoService.edit_projeto(
             user_email=current_user['email'],
-            projeto_id=projeto_id,
             vagas=data.get('vagas'),
             titulacao=data.get('titulacao'),
             curso=data.get('curso'),

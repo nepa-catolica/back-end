@@ -140,7 +140,7 @@ def listar_professores_pendentes():
     try:
         professor_list = AdminService.listar_professor_pendentes()
         professores_data = [
-            {'Id': prof.id, 'Nome': prof.nome, 'Email': prof.email, 'Matricula': prof.matricula, 'Curso': prof.curso}
+            {'id': prof.id, 'nome': prof.nome, 'email': prof.email, 'matricula': prof.matricula, 'curso': prof.curso}
             for prof in professor_list]
         return jsonify(professores_data), 200
 
@@ -159,7 +159,7 @@ def listar_professores_aprovados():
     try:
         professor_list = AdminService.listar_professores_aprovados()
         professores_data = [
-            {'Id': prof.id, 'Nome': prof.nome, 'Email': prof.email, 'Matricula': prof.matricula, 'Curso': prof.curso}
+            {'id': prof.id, 'nome': prof.nome, 'email': prof.email, 'matricula': prof.matricula, 'curso': prof.curso}
             for prof in professor_list]
         return jsonify(professores_data), 200
 
@@ -173,7 +173,7 @@ def listar_professores_aprovados():
 def aprovar_projeto(projeto_id):
     current_user = get_jwt_identity()
 
-    if current_user['role'] != 'admin':
+    if current_user['role'] != 'Admin':
         return jsonify({"message": "Access denied"}), 403
 
     try:
@@ -198,11 +198,11 @@ def aprovar_projeto(projeto_id):
 
 @bp.route('/api/rejeitar/projeto/<int:projeto_id>', methods=['POST'])
 @jwt_required()
-@role_required('admin')
+@role_required('Admin')
 def rejeitar_projeto(projeto_id):
     current_user = get_jwt_identity()
 
-    if current_user['role'] != 'admin':
+    if current_user['role'] != 'Admin':
         return jsonify({"message": "Access denied"}), 403
 
     try:
