@@ -195,7 +195,8 @@ def list_projects_pendentes():
             'professor': {
                 'id': projeto.professor.id,
                 'nome': projeto.professor.nome,
-                'email': projeto.professor.email
+                'email': projeto.professor.email,
+                'telefone': projeto.professor.telefone
             } if projeto.professor else None
         } for projeto in projetos]
 
