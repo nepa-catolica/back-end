@@ -13,7 +13,6 @@ bp = Blueprint('projetos', __name__)
 def create_projeto():
     try:
         data = request.get_json()
-        print(data)
         if not data:
             return jsonify({'message': 'Nenhum dado foi fornecido'}), 400
 
@@ -210,20 +209,14 @@ def list_projects_pendentes():
 @jwt_required()
 def editar_projeto(projeto_id):
     try:
-        # Verifica se o projeto existe no banco de dados
-        projeto = Projeto.query.filter_by(id=projeto_id).first()
-        if not projeto:
-            return jsonify({'msg': 'Projeto não encontrado'}), 404
-
-        # Recupera os dados enviados no corpo da requisição
         data = request.get_json()
         if not data:
             return jsonify({'msg': 'Nenhum dado foi fornecido'}), 400
 
-        # Recupera o usuário atual a partir do token JWT
         current_user = get_jwt_identity()
+        if not projeto_id:
+            return jsonify({'msg': 'O ID do projeto é obrigatório'}), 400
 
-        # Verifica os campos obrigatórios
         campos_obrigatorios = ['vagas','titulacao', 'curso', 'titulo', 'linhaDePesquisa', 'situacao', 'descricao',
                                'palavrasChave', 'localizacao', 'populacao', 'justificativa', 'objetivoGeral',
                                'objetivoEspecifico', 'metodologia', 'cronogramaDeAtividade', 'referencias', 'termos']
@@ -232,9 +225,9 @@ def editar_projeto(projeto_id):
             if not data.get(campo):
                 return jsonify({'msg': f'O campo "{campo}" é obrigatório e não pode estar vazio'}), 400
 
-        # Atualiza os campos do projeto com os dados recebidos
         response = ProjetoService.edit_projeto(
             user_email=current_user['email'],
+            projeto_id=projeto_id,
             vagas=data.get('vagas'),
             titulacao=data.get('titulacao'),
             curso=data.get('curso'),
@@ -265,14 +258,14 @@ def editar_projeto(projeto_id):
     except Exception as e:
         return jsonify({'msg': f'Ocorreu um erro inesperado: {str(e)}'}), 500
 
-@bp.route('/api/register/aluno_projeto', methods=['POST'])
+@bp.route('/api/register/aluno_projeto/<int:projeto_id>', methods=['POST'])
 @jwt_required()
-def register_aluno():
+def register_aluno(projeto_id):
     try:
-        data = request.get_json()
-
-        if not data or 'projeto_id' not in data:
-            return jsonify({'msg': 'ID do projeto é obrigatório'}), 400
+        if not projeto_id:
+            return jsonify({'msg': 'O ID do projeto é obrigatório'}), 400
+        
+        print(current_user)
 
         current_user = get_jwt_identity()
         aluno = Aluno.query.filter_by(matricula=current_user['matricula']).first()
@@ -291,7 +284,7 @@ def register_aluno():
             'permissao': aluno.permissao
         }
 
-        response, status_code = ProjetoService.register_aluno_projeto(aluno.matricula, data['projeto_id'])
+        response, status_code = ProjetoService.register_aluno_projeto(aluno.matricula, projeto_id)
 
         return jsonify({'aluno': aluno_data, **response}), status_code
 

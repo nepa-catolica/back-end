@@ -26,8 +26,6 @@ def register():
     data = request.get_json()
     role = data.get('role')
 
-    print(data)
-
     if role == 'aluno':
         try:
             response = AuthService.create_user_aluno(
