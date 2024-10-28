@@ -187,7 +187,7 @@ def list_projects_pendentes():
         projetos = Projeto.query.filter(Projeto.aprovado == False).all()
 
         if not projetos:
-            return jsonify({'message': 'Não existem projetos rejeitados ou estão em processo de aprovação'}), 404
+            return jsonify({'message': 'Não existem projetos rejeitados ou estão em processo de aprovação'}), 200
 
         projetos_data = [{
             'id': projeto.id,
