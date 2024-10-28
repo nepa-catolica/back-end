@@ -92,7 +92,14 @@ class ProjetoService:
             db.session.delete(aluno_projeto)
             db.session.commit()
 
-            return {'msg': 'Aluno rejeitado e removido do projeto'}, 200
+            aluno_projeto_data = {
+                'id': aluno_projeto.id,
+                'aluno_id': aluno_projeto.aluno_id,
+                'projeto_id': aluno_projeto.projeto_id,
+                'aprovado': aluno_projeto.aprovado
+            }
+
+            return {'msg': 'Aluno rejeitado e removido do projeto', 'aluno_projeto': aluno_projeto_data}, 200
 
         except SQLAlchemyError as e:
             db.session.rollback()

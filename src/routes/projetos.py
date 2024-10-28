@@ -72,13 +72,11 @@ def aprovar_aluno_no_projeto(projeto_id, aluno_id):
     try:
         response, status_code = ProjetoService.aprovar_aluno_projeto(aluno_id, projeto_id)
 
-        if status_code == 200:
-            return jsonify(response), 200
-        else:
-            return jsonify(response), status_code
+        return jsonify(response), status_code
 
     except Exception as e:
         return jsonify({"message": f"Erro ao aprovar aluno no projeto: {str(e)}"}), 500
+
 
 
 
@@ -86,8 +84,13 @@ def aprovar_aluno_no_projeto(projeto_id, aluno_id):
 @jwt_required()
 @role_required('professor')
 def rejeitar_aluno_no_projeto(projeto_id, aluno_id):
-    response, status_code = ProjetoService.rejeitar_aluno_projeto(aluno_id, projeto_id)
-    return jsonify(response), status_code
+    try:
+        response, status_code = ProjetoService.rejeitar_aluno_projeto(aluno_id, projeto_id)
+        return jsonify(response), status_code
+
+    except Exception as e:
+        return jsonify({"msg": f"Erro inesperado ao rejeitar aluno do projeto: {str(e)}"}), 500
+
 
 
 @bp.route('/api/listar/projeto/<int:projeto_id>', methods=['GET'])
@@ -144,6 +147,7 @@ def list_projects_aprovado():
             'descricao': projeto.descricao,
             'alunos_cadastrados': projeto.alunos_cadastrados,
             'professor': projeto.professor.nome if projeto.professor else None,
+            'telefone': projeto.professor.telefone,
             'data_criacao': projeto.data_criacao
         } for projeto in projetos]
 
@@ -257,7 +261,7 @@ def editar_projeto():
     except Exception as e:
         return jsonify({'msg': f'Ocorreu um erro inesperado: {str(e)}'}), 500
 
-@bp.route('/api/register/aluno_projeto', methods=['POST'])
+@bp.route('/api/register/aluno_projeto/<int:projeto_id>', methods=['POST'])
 @jwt_required()
 def register_aluno():
     try:
