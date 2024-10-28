@@ -146,6 +146,7 @@ def list_projects_aprovado():
             'id': projeto.id,
             'titulo': projeto.titulo,
             'descricao': projeto.descricao,
+            'vagas': projeto.vagas,
             'alunos_cadastrados': projeto.alunos_cadastrados,
             'professor': projeto.professor.nome if projeto.professor else None,
             'telefone': projeto.professor.telefone,
@@ -268,13 +269,9 @@ def editar_projeto(projeto_id):
 @jwt_required()
 def register_aluno(projeto_id):
     try:
-        if not projeto_id:
-            return jsonify({'msg': 'O ID do projeto é obrigatório'}), 400
-
         current_user = get_jwt_identity()
-        print(current_user)
-        aluno = Aluno.query.filter_by(matricula=current_user['matricula']).first()
 
+        aluno = Aluno.query.filter_by(matricula=current_user['matricula']).first()
         if not aluno:
             return jsonify({'message': 'Unauthorized'}), 401
 
@@ -283,7 +280,7 @@ def register_aluno(projeto_id):
             'nome': aluno.nome,
             'matricula': aluno.matricula,
             'curso': aluno.curso,
-            'data_ingresso': aluno.data_ingresso.strftime('%Y-%m-%d'),  # Formata data
+            'data_ingresso': aluno.data_ingresso.strftime('%Y-%m-%d'),
             'telefone': aluno.telefone,
             'email': aluno.email,
             'permissao': aluno.permissao
