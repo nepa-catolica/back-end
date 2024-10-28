@@ -145,6 +145,7 @@ def list_projects_aprovado():
             'id': projeto.id,
             'titulo': projeto.titulo,
             'descricao': projeto.descricao,
+            'vagas': projeto.vagas,
             'alunos_cadastrados': projeto.alunos_cadastrados,
             'professor': projeto.professor.nome if projeto.professor else None,
             'telefone': projeto.professor.telefone,
@@ -264,16 +265,11 @@ def editar_projeto():
 
 @bp.route('/api/register/aluno_projeto/<int:projeto_id>', methods=['POST'])
 @jwt_required()
-def register_aluno():
+def register_aluno(projeto_id):
     try:
-        data = request.get_json()
-
-        if not data or 'projeto_id' not in data:
-            return jsonify({'msg': 'ID do projeto é obrigatório'}), 400
-
         current_user = get_jwt_identity()
-        aluno = Aluno.query.filter_by(matricula=current_user['matricula']).first()
 
+        aluno = Aluno.query.filter_by(matricula=current_user['matricula']).first()
         if not aluno:
             return jsonify({'message': 'Unauthorized'}), 401
 
@@ -282,13 +278,13 @@ def register_aluno():
             'nome': aluno.nome,
             'matricula': aluno.matricula,
             'curso': aluno.curso,
-            'data_ingresso': aluno.data_ingresso.strftime('%Y-%m-%d'),  # Formata data
+            'data_ingresso': aluno.data_ingresso.strftime('%Y-%m-%d'),
             'telefone': aluno.telefone,
             'email': aluno.email,
             'permissao': aluno.permissao
         }
 
-        response, status_code = ProjetoService.register_aluno_projeto(aluno.matricula, data['projeto_id'])
+        response, status_code = ProjetoService.register_aluno_projeto(aluno.matricula, projeto_id)
 
         return jsonify({'aluno': aluno_data, **response}), status_code
 
