@@ -142,17 +142,34 @@ def list_projects_aprovado():
         if not projetos:
             return jsonify({'message': 'Não existem projetos aprovados ou estão em processo de aprovação'}), 404
 
-        projetos_data = [{
-            'id': projeto.id,
-            'titulo': projeto.titulo,
-            'descricao': projeto.descricao,
-            'vagas': projeto.vagas,
-            'alunos_cadastrados': projeto.alunos_cadastrados,
-            'professor': projeto.professor.nome if projeto.professor else None,
-            'telefone': projeto.professor.telefone,
-            'data_criacao': projeto.data_criacao,
-            'vagas': projeto.vagas,
-        } for projeto in projetos]
+        projetos_data = []
+
+        for projeto in projetos:
+            alunos_projeto = AlunoProjeto.query.filter_by(projeto_id=projeto.id).all()
+
+            alunos_data = [
+                {
+                    'id': aluno_projeto.aluno.id,
+                    'nome': aluno_projeto.aluno.nome,
+                    'matricula': aluno_projeto.aluno.matricula,
+                    'curso': aluno_projeto.aluno.curso,
+                    'aprovado': aluno_projeto.aprovado
+                }
+                for aluno_projeto in alunos_projeto
+            ]
+
+            projeto_data = {
+                'id': projeto.id,
+                'titulo': projeto.titulo,
+                'descricao': projeto.descricao,
+                'vagas': projeto.vagas,
+                'professor': projeto.professor.nome if projeto.professor else None,
+                'telefone': projeto.professor.telefone if projeto.professor else None,
+                'data_criacao': projeto.data_criacao.strftime('%Y-%m-%d'),
+                'alunos_cadastrados': alunos_data
+            }
+
+            projetos_data.append(projeto_data)
 
         return jsonify(projetos_data), 200
 
@@ -161,6 +178,7 @@ def list_projects_aprovado():
 
     except Exception as e:
         return jsonify({'message': f'Ocorreu um erro inesperado: {str(e)}'}), 500
+
 
 @bp.route('/api/listar/projetos_pendentes', methods=['GET'])
 @jwt_required()

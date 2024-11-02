@@ -28,3 +28,4 @@ class AlunoSchema(Schema):
     telefone = fields.Str()
     email = fields.Str()
     permissao = fields.Str()
+

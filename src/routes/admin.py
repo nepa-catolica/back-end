@@ -7,7 +7,7 @@ from src.utils.utils import role_required
 bp = Blueprint('admin', __name__)
 
 @bp.route('/api/publicar/edital', methods=['POST'])
-@jwt_required
+@jwt_required()
 @role_required('admin')
 def publicar_edital():
     current_user = get_jwt_identity()
