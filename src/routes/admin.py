@@ -7,7 +7,7 @@ from src.utils.utils import role_required
 bp = Blueprint('admin', __name__)
 
 @bp.route('/api/publicar/edital', methods=['POST'])
-@jwt_required
+@jwt_required()
 @role_required('admin')
 def publicar_edital():
     current_user = get_jwt_identity()
@@ -15,7 +15,7 @@ def publicar_edital():
 
     nome = request.json.get('nome')
     descricao = request.json.get('descricao')
-    arquivo_pdf = request.json.get('edital_pdf')
+    arquivo_pdf = request.files.get('edital_pdf')
 
     if not nome or not descricao or not arquivo_pdf:
         return jsonify({"message": "Nome, descricao e arquivo pdf são obrigatórios."}), 400
@@ -26,12 +26,12 @@ def publicar_edital():
             'id': novo_edital.id,
             'nome': novo_edital.nome,
             'descricao': novo_edital.descricao,
-            'data_criacao': novo_edital.data_criacao,
+            'data_criacao': novo_edital.data_criacao.strftime('%Y-%m-%d'),
             'arquivo_pdf': novo_edital.arquivo_pdf
-        }})
+        }}), 201
 
     except Exception as e:
-        return jsonify({'message': 'Erro ao criar e publicar o edital.', 'error': 'Erro interno, tente novamente mais tarde'}), 500
+        return jsonify({'message': 'Erro ao criar e publicar o edital.', 'error': str(e)}), 500
 
 @bp.route('/api/aprovar/professor/<int:professor_id>', methods=['POST'])
 @jwt_required()
