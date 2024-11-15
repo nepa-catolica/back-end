@@ -163,7 +163,12 @@ def list_projects_aprovado():
                 'titulo': projeto.titulo,
                 'descricao': projeto.descricao,
                 'vagas': projeto.vagas,
-                'professor': projeto.professor.nome if projeto.professor else None,
+                'professor': {
+                    'id': projeto.professor.id,
+                    'nome': projeto.professor.nome,
+                    'email': projeto.professor.email,
+                    'telefone': projeto.professor.telefone,
+                } if projeto.professor else None,
                 'telefone': projeto.professor.telefone if projeto.professor else None,
                 'data_criacao': projeto.data_criacao.strftime('%Y-%m-%d'),
                 'alunos_cadastrados': alunos_data
@@ -188,7 +193,7 @@ def list_projects_pendentes():
         projetos = Projeto.query.filter(Projeto.aprovado == False).all()
 
         if not projetos:
-            return jsonify({'message': 'Não existem projetos rejeitados ou estão em processo de aprovação'}), 404
+            return jsonify({'message': 'Não existem projetos rejeitados ou estão em processo de aprovação'}), 200
 
         projetos_data = [{
             'id': projeto.id,

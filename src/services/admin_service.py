@@ -20,6 +20,8 @@ class AdminService:
                 arquivo_pdf=file_path
             )
 
+            print(novo_edital)
+
             db.session.add(novo_edital)
             db.session.commit()
 
