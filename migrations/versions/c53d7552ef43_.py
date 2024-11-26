@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: e86fabe715a4
+Revision ID: c53d7552ef43
 Revises: 
-Create Date: 2024-09-02 13:01:16.572340
+Create Date: 2024-11-26 19:26:05.315569
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'e86fabe715a4'
+revision = 'c53d7552ef43'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -21,9 +21,9 @@ def upgrade():
     op.create_table('admin',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('nome', sa.String(length=255), nullable=False),
-    sa.Column('email', sa.String(length=255), nullable=False),
+    sa.Column('email', sa.String(length=320), nullable=False),
     sa.Column('password', sa.String(length=255), nullable=False),
-    sa.Column('permissao', sa.String(length=255), nullable=False),
+    sa.Column('permissao', sa.String(length=50), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email')
     )
@@ -33,10 +33,10 @@ def upgrade():
     sa.Column('matricula', sa.Integer(), nullable=False),
     sa.Column('curso', sa.String(length=255), nullable=False),
     sa.Column('data_ingresso', sa.DateTime(), nullable=False),
-    sa.Column('telefone', sa.String(length=255), nullable=False),
-    sa.Column('email', sa.String(length=255), nullable=False),
+    sa.Column('telefone', sa.String(length=20), nullable=False),
+    sa.Column('email', sa.String(length=320), nullable=False),
     sa.Column('password', sa.String(length=255), nullable=False),
-    sa.Column('permissao', sa.String(length=255), nullable=False),
+    sa.Column('permissao', sa.String(length=50), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email'),
     sa.UniqueConstraint('matricula'),
@@ -48,15 +48,29 @@ def upgrade():
     sa.Column('nome', sa.String(length=255), nullable=False),
     sa.Column('matricula', sa.Integer(), nullable=False),
     sa.Column('curso', sa.String(length=255), nullable=False),
-    sa.Column('telefone', sa.String(length=255), nullable=False),
-    sa.Column('email', sa.String(length=255), nullable=False),
+    sa.Column('telefone', sa.String(length=20), nullable=False),
+    sa.Column('email', sa.String(length=320), nullable=False),
     sa.Column('password', sa.String(length=255), nullable=False),
     sa.Column('aprovado', sa.Boolean(), nullable=False),
-    sa.Column('permissao', sa.String(length=255), nullable=False),
+    sa.Column('permissao', sa.String(length=50), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email'),
-    sa.UniqueConstraint('matricula'),
     sa.UniqueConstraint('telefone')
+    )
+    with op.batch_alter_table('professor', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_professor_matricula'), ['matricula'], unique=True)
+
+    op.create_table('edital',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('nome', sa.String(length=255), nullable=False),
+    sa.Column('descricao', sa.Text(), nullable=False),
+    sa.Column('arquivo_pdf', sa.String(length=255), nullable=False),
+    sa.Column('slug', sa.String(length=255), nullable=False),
+    sa.Column('data_criacao', sa.DateTime(), nullable=False),
+    sa.Column('admin_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['admin_id'], ['admin.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('slug')
     )
     op.create_table('projeto',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -67,19 +81,20 @@ def upgrade():
     sa.Column('titulo', sa.String(length=255), nullable=False),
     sa.Column('linhaDePesquisa', sa.String(length=255), nullable=False),
     sa.Column('situacao', sa.String(length=255), nullable=False),
-    sa.Column('descricao', sa.String(length=255), nullable=False),
+    sa.Column('descricao', sa.Text(), nullable=False),
     sa.Column('palavrasChave', sa.String(length=255), nullable=False),
     sa.Column('localizacao', sa.String(length=255), nullable=False),
     sa.Column('populacao', sa.String(length=255), nullable=False),
-    sa.Column('justificativa', sa.String(length=255), nullable=False),
-    sa.Column('objetivoGeral', sa.String(length=255), nullable=False),
-    sa.Column('objetivoEspecifico', sa.String(length=255), nullable=False),
-    sa.Column('metodologia', sa.String(length=255), nullable=False),
-    sa.Column('cronogramaDeAtividade', sa.String(length=255), nullable=False),
-    sa.Column('referencias', sa.String(length=255), nullable=False),
+    sa.Column('justificativa', sa.Text(), nullable=False),
+    sa.Column('objetivoGeral', sa.Text(), nullable=False),
+    sa.Column('objetivoEspecifico', sa.Text(), nullable=False),
+    sa.Column('metodologia', sa.Text(), nullable=False),
+    sa.Column('cronogramaDeAtividade', sa.Text(), nullable=False),
+    sa.Column('referencias', sa.Text(), nullable=False),
     sa.Column('termos', sa.Boolean(), nullable=False),
     sa.Column('data_criacao', sa.DateTime(), nullable=False),
     sa.Column('aprovado', sa.Boolean(), nullable=False),
+    sa.Column('data_limite_edicao', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['professor_id'], ['professor.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -99,6 +114,10 @@ def downgrade():
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_table('aluno_projeto')
     op.drop_table('projeto')
+    op.drop_table('edital')
+    with op.batch_alter_table('professor', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_professor_matricula'))
+
     op.drop_table('professor')
     op.drop_table('aluno')
     op.drop_table('admin')

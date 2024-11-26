@@ -1,10 +1,17 @@
 from flask import Flask
-from config import Config
+from dotenv import load_dotenv
 from src.utils.extensions import db, jwt, migrate
+import os
+
+load_dotenv()
+
 
 def create_app():
     app = Flask(__name__)
-    app.config.from_object(Config)
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI')
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
 
     db.init_app(app)
     migrate.init_app(app, db)

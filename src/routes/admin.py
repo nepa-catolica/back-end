@@ -1,37 +1,122 @@
-from flask import Blueprint, jsonify, request
+from dotenv import load_dotenv
+from flask import Blueprint, jsonify, request, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from src.utils.models import Admin, Projeto, Professor
+from src.utils.models import Admin, Projeto, Professor, Edital
 from ..services.admin_service import AdminService
 from src.utils.utils import role_required
+import os
+
+load_dotenv()
+
+UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads/edital_pdfs/')
 
 bp = Blueprint('admin', __name__)
 
-@bp.route('/api/publicar/edital', methods=['POST'])
+
+@bp.route('/api/edital/publicar', methods=['POST'])
 @jwt_required()
-@role_required('admin')
+@role_required('Admin')
 def publicar_edital():
     current_user = get_jwt_identity()
-    admin = Admin.query.filter(Admin.id == current_user['id']).first()
 
-    nome = request.json.get('nome')
-    descricao = request.json.get('descricao')
-    arquivo_pdf = request.files.get('edital_pdf')
+    admin = Admin.query.filter(Admin.email == current_user.get('email')).first()
+    if not admin:
+        return jsonify({"message": "Usuário administrador não encontrado ou sem permissão."}), 403
 
-    if not nome or not descricao or not arquivo_pdf:
-        return jsonify({"message": "Nome, descricao e arquivo pdf são obrigatórios."}), 400
+    if not request.form or not request.files:
+        return jsonify({"message": "Dados inválidos. Certifique-se de enviar os campos e o arquivo corretamente."}), 400
 
     try:
-        novo_edital = AdminService.edital_selecao(nome, descricao, admin.id, arquivo_pdf)
-        return jsonify({'message': 'Novo edital registrado e publicado com sucesso', 'edital': {
-            'id': novo_edital.id,
-            'nome': novo_edital.nome,
-            'descricao': novo_edital.descricao,
-            'data_criacao': novo_edital.data_criacao.strftime('%Y-%m-%d'),
-            'arquivo_pdf': novo_edital.arquivo_pdf
-        }}), 201
+        nome = request.form.get('nome')
+        descricao = request.form.get('descricao')
+        arquivo_pdf = request.files.get('arquivo')
+
+        if not nome or not descricao or not arquivo_pdf:
+            return jsonify({"message": "Nome, descrição e arquivo PDF são obrigatórios."}), 400
+
+        novo_edital = AdminService.edital_selecao(nome, descricao, arquivo_pdf, admin.id)
+
+        return jsonify({
+            'message': 'Novo edital registrado e publicado com sucesso.',
+            'edital': {
+                'id': novo_edital.id,
+                'slug': novo_edital.slug,
+                'nome': novo_edital.nome,
+                'descricao': novo_edital.descricao,
+                'data_criacao': novo_edital.data_criacao.strftime('%Y-%m-%d'),
+                'arquivo_pdf': novo_edital.arquivo_pdf
+            }
+        }), 201
+
+    except ValueError as e:
+        return jsonify({"message": str(e)}), 400
+    except Exception as e:
+        return jsonify({"message": "Erro ao criar e publicar o edital.", "error": str(e)}), 500
+
+
+@bp.route('/api/edital/exibir', methods=['GET'])
+@jwt_required()
+@role_required('Admin')
+def listar_editais():
+    try:
+        editais = Edital.query.all()
+
+        if not editais:
+            return jsonify({"message": "Nenhum edital encontrado."}), 404
+
+        editais_data = [{
+            "id": edital.id,
+            "slug": edital.slug,
+            "nome": edital.nome,
+            "descricao": edital.descricao,
+            "data_criacao": edital.data_criacao.strftime('%Y-%m-%d'),
+            "arquivo_pdf": edital.arquivo_pdf
+        } for edital in editais]
+
+        return jsonify(editais_data), 200
 
     except Exception as e:
-        return jsonify({'message': 'Erro ao criar e publicar o edital.', 'error': str(e)}), 500
+        return jsonify({"message": "Erro ao listar os editais.", "error": str(e)}), 500
+
+
+@bp.route('/api/edital/exibir/<string:slug>', methods=['GET'])
+@jwt_required()
+@role_required('Admin')
+def exibir_edital(slug):
+    try:
+        edital = Edital.query.filter_by(slug=slug).first()
+
+        if not edital:
+            return jsonify({"message": "Edital não encontrado."}), 404
+
+        pdf_path = os.path.abspath(os.path.join(UPLOAD_FOLDER, edital.arquivo_pdf))
+
+        if not os.path.exists(pdf_path):
+            return jsonify({"message": "Arquivo PDF não encontrado."}), 404
+
+        return send_file(
+            pdf_path,
+            mimetype='application/pdf',
+            as_attachment=False
+        )
+
+    except Exception as e:
+        return jsonify({"message": "Erro ao exibir o edital.", "error": str(e)}), 500
+
+
+@bp.route('/api/edital/deletar/<int:edital_id>', methods=['DELETE'])
+@jwt_required()
+@role_required('Admin')
+def deletar_edital(edital_id):
+    current_user = get_jwt_identity()
+    admin = Admin.query.filter_by(email=current_user.get('email')).first()
+
+    if not admin:
+        return jsonify({"message": "Administrador não encontrado ou sem permissão."}), 403
+
+    response = AdminService.deletar_edital_by_id(edital_id, admin.id)
+    return jsonify({"message": response['message']}), response['status']
+
 
 @bp.route('/api/aprovar/professor/<int:professor_id>', methods=['POST'])
 @jwt_required()
@@ -44,7 +129,9 @@ def aprovar_professor(professor_id):
         else:
             return jsonify({"message": "Professor não encontrado"}), 404
     except Exception as e:
-        return jsonify({"message": "Erro ao aprovar professor", "error": 'Erro interno, tente novamente mais tarde'}), 500
+        return jsonify(
+            {"message": "Erro ao aprovar professor", "error": 'Erro interno, tente novamente mais tarde'}), 500
+
 
 @bp.route('/api/rejeitar/professor/<int:professor_id>', methods=['POST'])
 @jwt_required()
@@ -58,7 +145,9 @@ def rejeitar_professor(professor_id):
             return jsonify({"message": "Professor não encontrado"}), 404
 
     except Exception as e:
-        return jsonify({"message": "Erro ao rejeitar professor", "error": 'Erro interno, tente novamente mais tarde'}), 500
+        return jsonify(
+            {"message": "Erro ao rejeitar professor", "error": 'Erro interno, tente novamente mais tarde'}), 500
+
 
 @bp.route('/api/professor/<int:professor_id>/detalhes', methods=['GET'])
 @jwt_required()
@@ -85,6 +174,7 @@ def detalhes_professor(professor_id):
 
     except Exception as e:
         return jsonify({'message': f'Erro ao obter detalhes do professor: {str(e)}'}), 500
+
 
 @bp.route('/api/projeto/<int:projeto_id>/detalhes', methods=['GET'])
 @jwt_required()
