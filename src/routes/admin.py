@@ -57,6 +57,7 @@ def publicar_edital():
 @bp.route('/api/edital/exibir', methods=['GET'])
 @jwt_required()
 @role_required('Admin')
+@role_required('Professor')
 def listar_editais():
     try:
         editais = Edital.query.all()
@@ -82,6 +83,7 @@ def listar_editais():
 @bp.route('/api/edital/exibir/<string:slug>', methods=['GET'])
 @jwt_required()
 @role_required('Admin')
+@role_required('Professor')
 def exibir_edital(slug):
     try:
         edital = Edital.query.filter_by(slug=slug).first()
