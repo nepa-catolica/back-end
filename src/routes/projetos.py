@@ -78,9 +78,6 @@ def aprovar_aluno_no_projeto(projeto_id, aluno_id):
     except Exception as e:
         return jsonify({"message": f"Erro ao aprovar aluno no projeto: {str(e)}"}), 500
 
-
-
-
 @bp.route('/api/projeto/<int:projeto_id>/aluno/<int:aluno_id>/rejeitar', methods=['POST'])
 @jwt_required()
 @role_required('professor')
@@ -91,8 +88,6 @@ def rejeitar_aluno_no_projeto(projeto_id, aluno_id):
 
     except Exception as e:
         return jsonify({"msg": f"Erro inesperado ao rejeitar aluno do projeto: {str(e)}"}), 500
-
-
 
 @bp.route('/api/listar/projeto/<int:projeto_id>', methods=['GET'])
 @jwt_required()
@@ -151,6 +146,7 @@ def list_projects_aprovado():
                 {
                     'id': aluno_projeto.aluno.id,
                     'nome': aluno_projeto.aluno.nome,
+                    'email': aluno_projeto.aluno.email,
                     'matricula': aluno_projeto.aluno.matricula,
                     'curso': aluno_projeto.aluno.curso,
                     'aprovado': aluno_projeto.aprovado
