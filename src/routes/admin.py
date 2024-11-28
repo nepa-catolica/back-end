@@ -8,7 +8,7 @@ import os
 
 load_dotenv()
 
-UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads/edital_pdfs/')
+UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', os.path.abspath('./uploads/edital_pdfs/'))
 
 bp = Blueprint('admin', __name__)
 

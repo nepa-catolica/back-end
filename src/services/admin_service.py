@@ -8,7 +8,7 @@ from src.utils.models import Professor, Projeto, Edital
 
 load_dotenv()
 
-UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads/edital_pdfs/')
+UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', os.path.abspath('./uploads/edital_pdfs/'))
 ALLOWED_EXTENSIONS = {'pdf'}
 MAX_FILE_SIZE = int(os.getenv('MAX_FILE_SIZE', 5 * 1024 * 1024))
 
@@ -34,9 +34,9 @@ class AdminService:
             raise ValueError(f"O arquivo PDF excede o limite de {MAX_FILE_SIZE // (1024 * 1024)}MB.")
 
         if not os.path.exists(UPLOAD_FOLDER):
-            os.makedirs(UPLOAD_FOLDER)
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-        filename = secure_filename(arquivo_pdf.filename)
+        filename = secure_filename(arquivo_pdf.filename).lower()
         file_path = os.path.abspath(os.path.join(UPLOAD_FOLDER, filename))
         relative_path = os.path.relpath(file_path, start=UPLOAD_FOLDER)
 
