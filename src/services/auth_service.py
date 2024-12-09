@@ -1,4 +1,3 @@
-import re
 from argon2 import PasswordHasher, exceptions
 from flask_jwt_extended import create_access_token
 from sqlalchemy.exc import SQLAlchemyError

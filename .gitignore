@@ -1,0 +1,50 @@
+# Diretórios e arquivos do ambiente virtual
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.pyc
+*.pyo
+
+# Configuração do sistema e editor
+.vscode/
+.idea/
+*.swp
+
+# Arquivos de log
+*.log
+*.out
+*.err
+
+# Dependências
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+
+# Arquivos de configuração locais
+.env
+*.local
+
+# Diretórios de uploads e arquivos gerados
+uploads/
+media/
+staticfiles/
+*.pdf
+
+# Cache do Flask
+instance/
+*.sqlite3
+
+# Arquivos de compilação e build
+*.egg-info/
+build/
+dist/
+
+# Outros temporários
+.coverage
+*.pid
+*.tmp

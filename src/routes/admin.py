@@ -8,7 +8,7 @@ import os
 
 load_dotenv()
 
-UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', os.path.abspath('./uploads/edital_pdfs/'))
+UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads/edital_pdfs/')
 
 bp = Blueprint('admin', __name__)
 
@@ -22,7 +22,7 @@ def publicar_edital():
     admin = Admin.query.filter(Admin.email == current_user.get('email')).first()
     if not admin:
         return jsonify({"message": "Usuário administrador não encontrado ou sem permissão."}), 403
-
+    
     if not request.form or not request.files:
         return jsonify({"message": "Dados inválidos. Certifique-se de enviar os campos e o arquivo corretamente."}), 400
 
@@ -56,8 +56,7 @@ def publicar_edital():
 
 @bp.route('/api/edital/exibir', methods=['GET'])
 @jwt_required()
-@role_required('Admin')
-@role_required('Professor')
+@role_required(['Admin', 'Professor'])
 def listar_editais():
     try:
         editais = Edital.query.all()
@@ -82,8 +81,7 @@ def listar_editais():
 
 @bp.route('/api/edital/exibir/<string:slug>', methods=['GET'])
 @jwt_required()
-@role_required('Admin')
-@role_required('Professor')
+@role_required(['Admin', 'Professor'])
 def exibir_edital(slug):
     try:
         edital = Edital.query.filter_by(slug=slug).first()
@@ -122,7 +120,7 @@ def deletar_edital(edital_id):
 
 @bp.route('/api/aprovar/professor/<int:professor_id>', methods=['POST'])
 @jwt_required()
-@role_required('admin')
+@role_required('Admin')
 def aprovar_professor(professor_id):
     try:
         professor_aprovado = AdminService.aprovar_professor(professor_id)
@@ -137,7 +135,7 @@ def aprovar_professor(professor_id):
 
 @bp.route('/api/rejeitar/professor/<int:professor_id>', methods=['POST'])
 @jwt_required()
-@role_required('admin')
+@role_required('Admin')
 def rejeitar_professor(professor_id):
     try:
         professor_rejeitado = AdminService.rejeitar_professor(professor_id)
@@ -153,7 +151,7 @@ def rejeitar_professor(professor_id):
 
 @bp.route('/api/professor/<int:professor_id>/detalhes', methods=['GET'])
 @jwt_required()
-@role_required('admin')
+@role_required('Admin')
 def detalhes_professor(professor_id):
     try:
         professor = Professor.query.filter_by(id=professor_id).first()
@@ -180,7 +178,7 @@ def detalhes_professor(professor_id):
 
 @bp.route('/api/projeto/<int:projeto_id>/detalhes', methods=['GET'])
 @jwt_required()
-@role_required('admin')
+@role_required('Admin')
 def detalhes_projeto(projeto_id):
     try:
         projeto = Projeto.query.filter_by(id=projeto_id).first()
@@ -223,10 +221,10 @@ def detalhes_projeto(projeto_id):
 
 @bp.route('/api/lista/professores-pendentes', methods=['GET'])
 @jwt_required()
-@role_required('admin')
+@role_required('Admin')
 def listar_professores_pendentes():
     current_user = get_jwt_identity()
-    if current_user['role'] != 'admin':
+    if current_user['role'] != 'Admin':
         return jsonify({"message": "Access denied"}), 403
 
     try:
@@ -261,11 +259,11 @@ def listar_professores_aprovados():
 
 @bp.route('/api/aprovar/projeto/<int:projeto_id>', methods=['POST'])
 @jwt_required()
-@role_required('admin')
+@role_required('Admin')
 def aprovar_projeto(projeto_id):
     current_user = get_jwt_identity()
 
-    if current_user['role'] != 'admin':
+    if current_user['role'] != 'Admin':
         return jsonify({"message": "Access denied"}), 403
 
     try:
@@ -290,11 +288,11 @@ def aprovar_projeto(projeto_id):
 
 @bp.route('/api/rejeitar/projeto/<int:projeto_id>', methods=['POST'])
 @jwt_required()
-@role_required('admin')
+@role_required('Admin')
 def rejeitar_projeto(projeto_id):
     current_user = get_jwt_identity()
 
-    if current_user['role'] != 'admin':
+    if current_user['role'] != 'Admin':
         return jsonify({"message": "Access denied"}), 403
 
     try:

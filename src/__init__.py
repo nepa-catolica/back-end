@@ -1,10 +1,10 @@
 from flask import Flask
 from dotenv import load_dotenv
 from src.utils.extensions import db, jwt, migrate
+from flask_cors import CORS
 import os
 
 load_dotenv()
-
 
 def create_app():
     app = Flask(__name__)
@@ -16,6 +16,8 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
+
+    CORS(app, resources={r"/*": {"origins": "*"}})
 
     from .routes.auth import bp as auth_bp
     from .routes.admin import bp as admin_bp

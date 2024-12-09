@@ -217,7 +217,8 @@ def list_projects_pendentes():
                 'id': projeto.professor.id,
                 'nome': projeto.professor.nome,
                 'email': projeto.professor.email,
-                'telefone': projeto.professor.telefone
+                'telefone': projeto.professor.telefone,
+                'vagas': projeto.vagas,
             } if projeto.professor else None
         } for projeto in projetos]
 
@@ -231,14 +232,13 @@ def list_projects_pendentes():
 
 @bp.route('/api/editar/projeto/<int:projeto_id>', methods=['PUT'])
 @jwt_required()
-def editar_projeto():
+def editar_projeto(projeto_id):
     try:
         data = request.get_json()
         if not data:
             return jsonify({'msg': 'Nenhum dado foi fornecido'}), 400
 
         current_user = get_jwt_identity()
-        projeto_id = data.get('projeto_id')
         if not projeto_id:
             return jsonify({'msg': 'O ID do projeto é obrigatório'}), 400
 
