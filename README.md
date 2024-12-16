@@ -1,4 +1,3 @@
-```markdown
 # Backend do Sistema NEPA
 
 Este é o backend do sistema desenvolvido para o **Núcleo de Extensão e Pesquisa Acadêmica (NEPA)** da **Faculdade Católica da Paraíba**. O sistema foi projetado para automatizar e otimizar o processo de gerenciamento, aprovação e inscrição de projetos acadêmicos, proporcionando mais eficiência e transparência.
@@ -34,21 +33,21 @@ back-end/
 ├── .gitignore
 ├── app.py
 ├── requirements.txt
-```
 
 ---
 
+   ```
 ## Configuração do Ambiente
 
 ### Instalação de Dependências
 
 Antes de começar, certifique-se de que você possui o **Python 3.8+** e o **PostgreSQL** instalados em seu sistema. Execute os comandos abaixo:
 
+
 1. Crie e ative um ambiente virtual:
    ```bash
    python -m venv venv
    source venv/bin/activate   # No Windows: venv\Scripts\activate
-   ```
 
 2. Instale as dependências listadas no arquivo `requirements.txt`:
    ```bash
@@ -100,10 +99,41 @@ Certifique-se de ajustar as configurações, como `SQLALCHEMY_DATABASE_URI`, con
 
 ---
 
-## Tecnologias Utilizadas
+## Configurando o Flask-Migrate
+
+**Flask-Migrate** é usado para gerenciar as alterações no banco de dados de maneira controlada. Siga os passos abaixo:
+
+### 1. Inicializar Migrations
+Antes de começar a usar as migrações, inicialize o diretório de migração:
+```bash
+flask db init
+```
+
+### 2. Criar uma Nova Migração
+Sempre que você fizer alterações nos modelos, crie uma nova migração:
+```bash
+flask db migrate -m "Descrição da migração"
+```
+
+### 3. Aplicar as Migrações
+Para aplicar as alterações no banco de dados, execute:
+```bash
+flask db upgrade
+```
+
+### 4. Reverter uma Migração (Opcional)
+Se for necessário reverter uma migração:
+```bash
+flask db downgrade
+```
+
+---
+
+## Principais Tecnologias Utilizadas
 
 - **Flask**: Framework principal.
 - **SQLAlchemy**: ORM para gerenciar o banco de dados.
+- **Flask-Migrate**: Ferramenta para gerenciar migrações no banco de dados.
 - **PostgreSQL**: Banco de dados relacional.
 - **JWT**: Para autenticação e autorização segura.
 
@@ -112,5 +142,6 @@ Certifique-se de ajustar as configurações, como `SQLALCHEMY_DATABASE_URI`, con
 ## Contribuições
 
 Contribuições são bem-vindas! Sinta-se à vontade para abrir uma *issue* ou enviar um *pull request*.
+
 
 ```
