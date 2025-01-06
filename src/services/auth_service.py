@@ -1,3 +1,5 @@
+import datetime
+
 from argon2 import PasswordHasher, exceptions
 from flask_jwt_extended import create_access_token
 from sqlalchemy.exc import SQLAlchemyError
@@ -16,11 +18,23 @@ class AuthService:
     def create_user_aluno(nome, email, matricula, curso, telefone, password):
         try:
             if not AuthService.is_strong_password(password):
-                return {'msg': 'Senha fraca. A senha deve conter ao menos 8 caracteres, incluindo letras e números.',
-                        'status': 400}
+                return {
+                    'msg': 'Senha fraca. A senha deve conter ao menos 8 caracteres, incluindo letras, números e '
+                           'caracteres especiais.',
+                    'status': 400
+                }
 
-            if Aluno.query.filter_by(email=email).first() or Aluno.query.filter_by(matricula=matricula).first():
-                return {'msg': 'Email ou matrícula já cadastrados', 'status': 400}
+            existing_aluno = Aluno.query.filter(
+                (Aluno.email == email) | (Aluno.matricula == matricula) | (Aluno.telefone == telefone)
+            ).first()
+
+            if existing_aluno:
+                if existing_aluno.email == email:
+                    return {'msg': 'Email já cadastrado.', 'status': 400}
+                elif existing_aluno.matricula == matricula:
+                    return {'msg': 'Matrícula já cadastrada.', 'status': 400}
+                elif existing_aluno.telefone == telefone:
+                    return {'msg': 'Telefone já cadastrado.', 'status': 400}
 
             hashed_password = ph.hash(password)
 
@@ -36,28 +50,57 @@ class AuthService:
             db.session.add(aluno)
             db.session.commit()
 
-            return {'msg': 'Aluno criado com sucesso', 'aluno': aluno.nome, 'status': 201}
+            return {
+                'msg': 'Aluno criado com sucesso.',
+                'aluno': aluno.nome,
+                'status': 201
+            }
 
         except SQLAlchemyError as e:
             db.session.rollback()
-            return {'msg': f'Erro ao criar aluno no banco de dados: {str(e)}', 'status': 500}
+            return {
+                'msg': f'Erro ao criar aluno no banco de dados: {str(e)}',
+                'status': 500
+            }
 
     @staticmethod
-    def create_user_professor(nome, email, matricula, curso, telefone, password):
+    def create_user_professor(nome, email, codigo_curso, telefone, password):
         try:
             if not AuthService.is_strong_password(password):
-                return {'msg': 'Senha fraca. A senha deve conter ao menos 8 caracteres, incluindo letras e números.',
-                        'status': 400}
+                return {
+                    'msg': 'Senha fraca. A senha deve conter ao menos 8 caracteres, incluindo letras, números e '
+                           'caracteres especiais.',
+                    'status': 400
+                }
 
-            if Professor.query.filter_by(email=email).first() or Professor.query.filter_by(matricula=matricula).first():
-                return {'msg': 'Email ou matrícula já cadastrados', 'status': 400}
+            curso_mapping = {
+                '0125ABD': 'Educação Física',
+                '0491PAS': 'Ciências da Computação',
+                '0394ISO': 'Direito',
+                '0586LAI': 'Marketing'
+            }
+
+            if codigo_curso not in curso_mapping:
+                return {'msg': 'Código de curso inválido.', 'status': 400}
+
+            curso = curso_mapping[codigo_curso]
+
+            existing_professor = Professor.query.filter(
+                (Professor.email == email) | (Professor.telefone == telefone)
+            ).first()
+
+            if existing_professor:
+                if existing_professor.email == email:
+                    return {'msg': 'Email já cadastrado.', 'status': 400}
+                elif existing_professor.telefone == telefone:
+                    return {'msg': 'Telefone já cadastrado.', 'status': 400}
 
             hashed_password = ph.hash(password)
 
             professor = Professor(
                 nome=nome,
                 email=email,
-                matricula=matricula,
+                matricula=codigo_curso,
                 curso=curso,
                 telefone=telefone,
                 password=hashed_password
@@ -66,11 +109,19 @@ class AuthService:
             db.session.add(professor)
             db.session.commit()
 
-            return {'msg': 'Professor criado com sucesso. Aguardando aprovação.', 'professor': professor.nome, 'status': 201}
+            return {
+                'msg': 'Professor criado com sucesso.',
+                'professor': professor.nome,
+                'curso': curso,
+                'status': 201
+            }
 
         except SQLAlchemyError as e:
             db.session.rollback()
-            return {'msg': f'Erro ao criar professor no banco de dados: {str(e)}', 'status': 500}
+            return {
+                'msg': f'Erro ao criar professor no banco de dados: {str(e)}',
+                'status': 500
+            }
 
     @staticmethod
     def create_user_admin(nome, email, password):
@@ -172,7 +223,3 @@ class AuthService:
         access_token = create_access_token(identity=identifier_payload)
 
         return {'access_token': access_token, 'status': 200}
-
-    # @staticmethod
-    # def is_strong_password(password):
-    #     return bool(re.match(r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$', password))

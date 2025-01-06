@@ -12,6 +12,7 @@ UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads/edital_pdfs/')
 ALLOWED_EXTENSIONS = {'pdf'}
 MAX_FILE_SIZE = int(os.getenv('MAX_FILE_SIZE', 5 * 1024 * 1024))
 
+
 class AdminService:
 
     @staticmethod
@@ -135,7 +136,6 @@ class AdminService:
             db.session.commit()
             return projeto
         return None
-
 
     @staticmethod
     def rejeitar_projeto(projeto_id):

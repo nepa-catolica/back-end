@@ -45,8 +45,7 @@ def register():
             response = AuthService.create_user_professor(
                 nome=data['nome'],
                 email=data['email'],
-                matricula=data['matricula'],
-                curso=data['curso'],
+                codigo_curso=data['codigo_curso'],
                 telefone=data['telefone'],
                 password=data['password']
             )
