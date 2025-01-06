@@ -1,5 +1,6 @@
 from .extensions import db
 from datetime import datetime, timedelta
+from slugify import slugify
 
 class Aluno(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -66,18 +67,33 @@ class AlunoProjeto(db.Model):
     projeto = db.relationship('Projeto', back_populates='alunos_cadastrados')
 
 class Admin(db.Model):
+
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(255), nullable=False)
     email = db.Column(db.String(320), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
-    permissao = db.Column(db.String(50), nullable=False, default='Admin')
+    permissao = db.Column(db.String(50), nullable=False)
     editais_criados = db.relationship('Edital', back_populates='admin', cascade="all, delete-orphan")
+
 
 class Edital(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(255), nullable=False)
     descricao = db.Column(db.Text, nullable=False)
     arquivo_pdf = db.Column(db.String(255), nullable=False)
+    slug = db.Column(db.String(255), unique=True, nullable=False)
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     admin_id = db.Column(db.Integer, db.ForeignKey('admin.id'), nullable=False)
+
     admin = db.relationship('Admin', back_populates='editais_criados')
+
+    def generate_slug(self):
+        base_slug = slugify(self.nome)
+        unique_slug = base_slug
+        counter = 1
+
+        while Edital.query.filter_by(slug=unique_slug).first() is not None:
+            unique_slug = f"{base_slug}-{counter}"
+            counter += 1
+
+        self.slug = unique_slug

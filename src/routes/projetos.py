@@ -25,7 +25,6 @@ def create_projeto():
         schema = ProjetoSchema()
         errors = schema.validate(data)
         if errors:
-            print(errors)
             return jsonify(errors), 400
 
         response = ProjetoService.register_projeto(professor.id, **data)

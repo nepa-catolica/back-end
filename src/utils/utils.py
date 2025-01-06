@@ -3,12 +3,15 @@ from flask_jwt_extended import get_jwt_identity
 from flask import jsonify
 
 
-def role_required(role):
+def role_required(allowed_roles):
+    if isinstance(allowed_roles, str):
+        allowed_roles = [allowed_roles]
+
     def wrapper(fn):
         @wraps(fn)
         def decorated_view(*args, **kwargs):
             current_user = get_jwt_identity()
-            if current_user['role'] != role:
+            if current_user['role'] not in allowed_roles:
                 return jsonify({"message": "Access denied"}), 403
             return fn(*args, **kwargs)
 

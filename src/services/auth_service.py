@@ -121,8 +121,6 @@ class AuthService:
         try:
             user = AuthService.get_user_by_identifier(identifier)
 
-            print(user)
-
             if user and AuthService.check_password(user.password, password):
                 return AuthService.generate_token(user)
 
