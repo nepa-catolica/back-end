@@ -1,4 +1,5 @@
 import datetime
+import uuid
 
 from argon2 import PasswordHasher, exceptions
 from flask_jwt_extended import create_access_token
@@ -157,7 +158,11 @@ class AuthService:
                 matricula = int(identifier)
                 professor = Professor.query.filter_by(matricula=matricula).first()
             else:
-                professor = Professor.query.filter_by(email=identifier).first()
+                try:
+                    uuid_identifier = uuid.UUID(identifier)
+                    professor = Professor.query.filter_by(id=uuid_identifier).first()
+                except ValueError:
+                    professor = Professor.query.filter_by(email=identifier).first()
 
             if professor and not professor.aprovado:
                 return professor
@@ -183,16 +188,25 @@ class AuthService:
 
     @staticmethod
     def get_user_by_identifier(identifier):
-        if identifier.isdigit():
-            matricula = int(identifier)
-            user = Professor.query.filter_by(matricula=matricula).first() or \
-                   Aluno.query.filter_by(matricula=matricula).first()
-        else:
-            user = Admin.query.filter_by(email=identifier).first() or \
-                   Professor.query.filter_by(email=identifier).first() or \
-                   Aluno.query.filter_by(email=identifier).first()
+        try:
+            if identifier.isdigit():
+                matricula = int(identifier)
+                user = Professor.query.filter_by(matricula=matricula).first() or \
+                       Aluno.query.filter_by(matricula=matricula).first()
+            else:
+                try:
+                    uuid_identifier = uuid.UUID(identifier)
+                    user = Admin.query.filter_by(id=uuid_identifier).first() or \
+                           Professor.query.filter_by(id=uuid_identifier).first() or \
+                           Aluno.query.filter_by(id=uuid_identifier).first()
+                except ValueError:
+                    user = Admin.query.filter_by(email=identifier).first() or \
+                           Professor.query.filter_by(email=identifier).first() or \
+                           Aluno.query.filter_by(email=identifier).first()
 
-        return user
+            return user
+        except SQLAlchemyError as e:
+            raise Exception(f'Erro ao acessar o banco de dados: {str(e)}')
 
     @staticmethod
     def check_password(hashed_password, password):

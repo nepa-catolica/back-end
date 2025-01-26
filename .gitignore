@@ -1,6 +1,7 @@
 # Diretórios e arquivos do ambiente virtual
 .venv/
 venv/
+.venv
 ENV/
 env/
 __pycache__
@@ -8,6 +9,9 @@ __pycache__
 __pycache__/
 *.pyc
 *.pyo
+
+migrations
+migrations/
 
 # Configuração do sistema e editor
 .vscode/

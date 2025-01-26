@@ -5,6 +5,7 @@ from src.utils.models import Admin, Projeto, Professor, Edital
 from ..services.admin_service import AdminService
 from src.utils.utils import role_required
 import os
+from uuid import UUID
 
 load_dotenv()
 
@@ -22,7 +23,7 @@ def publicar_edital():
     admin = Admin.query.filter(Admin.email == current_user.get('email')).first()
     if not admin:
         return jsonify({"message": "Usuário administrador não encontrado ou sem permissão."}), 403
-    
+
     if not request.form or not request.files:
         return jsonify({"message": "Dados inválidos. Certifique-se de enviar os campos e o arquivo corretamente."}), 400
 
@@ -104,7 +105,7 @@ def exibir_edital(slug):
         return jsonify({"message": "Erro ao exibir o edital.", "error": str(e)}), 500
 
 
-@bp.route('/api/edital/deletar/<int:edital_id>', methods=['DELETE'])
+@bp.route('/api/edital/deletar/<uuid:edital_id>', methods=['DELETE'])
 @jwt_required()
 @role_required('Admin')
 def deletar_edital(edital_id):
@@ -114,16 +115,16 @@ def deletar_edital(edital_id):
     if not admin:
         return jsonify({"message": "Administrador não encontrado ou sem permissão."}), 403
 
-    response = AdminService.deletar_edital_by_id(edital_id, admin.id)
+    response = AdminService.deletar_edital_by_id(str(edital_id), str(admin.id))
     return jsonify({"message": response['message']}), response['status']
 
 
-@bp.route('/api/aprovar/professor/<int:professor_id>', methods=['POST'])
+@bp.route('/api/aprovar/professor/<uuid:professor_id>', methods=['POST'])
 @jwt_required()
 @role_required('Admin')
 def aprovar_professor(professor_id):
     try:
-        professor_aprovado = AdminService.aprovar_professor(professor_id)
+        professor_aprovado = AdminService.aprovar_professor(str(professor_id))
         if professor_aprovado:
             return jsonify({"message": "Professor aprovado com sucesso", "professor": professor_aprovado.nome}), 200
         else:
@@ -133,12 +134,12 @@ def aprovar_professor(professor_id):
             {"message": "Erro ao aprovar professor", "error": 'Erro interno, tente novamente mais tarde'}), 500
 
 
-@bp.route('/api/rejeitar/professor/<int:professor_id>', methods=['POST'])
+@bp.route('/api/rejeitar/professor/<uuid:professor_id>', methods=['POST'])
 @jwt_required()
 @role_required('Admin')
 def rejeitar_professor(professor_id):
     try:
-        professor_rejeitado = AdminService.rejeitar_professor(professor_id)
+        professor_rejeitado = AdminService.rejeitar_professor(str(professor_id))
         if professor_rejeitado:
             return jsonify({"message": "Professor rejeitado com sucesso", "professor": professor_rejeitado.nome}), 200
         else:
@@ -149,17 +150,17 @@ def rejeitar_professor(professor_id):
             {"message": "Erro ao rejeitar professor", "error": 'Erro interno, tente novamente mais tarde'}), 500
 
 
-@bp.route('/api/professor/<int:professor_id>/detalhes', methods=['GET'])
+@bp.route('/api/professor/<uuid:professor_id>/detalhes', methods=['GET'])
 @jwt_required()
 @role_required('Admin')
 def detalhes_professor(professor_id):
     try:
-        professor = Professor.query.filter_by(id=professor_id).first()
+        professor = Professor.query.filter(Professor.id == str(professor_id)).first()
 
         if not professor:
             return jsonify({'message': 'Professor não encontrado'}), 404
 
-        projetos = Projeto.query.filter_by(professor_id=professor_id).all()
+        projetos = Projeto.query.filter_by(professor_id=str(professor_id)).all()
 
         professor_data = {
             'id': professor.id,
@@ -176,12 +177,12 @@ def detalhes_professor(professor_id):
         return jsonify({'message': f'Erro ao obter detalhes do professor: {str(e)}'}), 500
 
 
-@bp.route('/api/projeto/<int:projeto_id>/detalhes', methods=['GET'])
+@bp.route('/api/projeto/<uuid:projeto_id>/detalhes', methods=['GET'])
 @jwt_required()
 @role_required('Admin')
 def detalhes_projeto(projeto_id):
     try:
-        projeto = Projeto.query.filter_by(id=projeto_id).first()
+        projeto = Projeto.query.filter(Projeto.id == str(projeto_id)).first()
 
         if not projeto:
             return jsonify({'message': 'Projeto não encontrado'}), 404
@@ -223,19 +224,31 @@ def detalhes_projeto(projeto_id):
 @jwt_required()
 @role_required('Admin')
 def listar_professores_pendentes():
-    current_user = get_jwt_identity()
-    if current_user['role'] != 'Admin':
-        return jsonify({"message": "Access denied"}), 403
-
     try:
+        current_user = get_jwt_identity()
+        print(f"JWT Identity: {current_user}")
+
         professor_list = AdminService.listar_professor_pendentes()
+        print(f"Professores Pendentes: {professor_list}")
+
+        if not professor_list:
+            return jsonify({"message": "Nenhum professor pendente encontrado."}), 200
+
         professores_data = [
-            {'id': prof.id, 'nome': prof.nome, 'email': prof.email, 'matricula': prof.matricula, 'curso': prof.curso}
-            for prof in professor_list]
+            {
+                'id': str(prof.id),
+                'nome': prof.nome,
+                'email': prof.email,
+                'matricula': prof.matricula,
+                'curso': prof.curso
+            }
+            for prof in professor_list
+        ]
         return jsonify(professores_data), 200
 
     except Exception as e:
-        return jsonify({"message": "Erro ao listar professores", "error": str(e)}), 400
+        print(f"Erro ao listar professores pendentes: {e}")
+        return jsonify({"message": "Erro ao listar professores pendentes", "error": str(e)}), 500
 
 
 @bp.route('/api/lista/professores-aprovados', methods=['GET'])
@@ -257,7 +270,7 @@ def listar_professores_aprovados():
         return jsonify({"message": "Erro ao listar professores", "error": str(e)}), 400
 
 
-@bp.route('/api/aprovar/projeto/<int:projeto_id>', methods=['POST'])
+@bp.route('/api/aprovar/projeto/<uuid:projeto_id>', methods=['POST'])
 @jwt_required()
 @role_required('Admin')
 def aprovar_projeto(projeto_id):
@@ -267,7 +280,7 @@ def aprovar_projeto(projeto_id):
         return jsonify({"message": "Access denied"}), 403
 
     try:
-        projeto_aprovado = AdminService.aprovar_projeto(projeto_id)
+        projeto_aprovado = AdminService.aprovar_projeto(str(projeto_id))
 
         if projeto_aprovado:
             return jsonify({

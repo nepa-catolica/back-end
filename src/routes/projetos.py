@@ -33,17 +33,17 @@ def create_projeto():
     except Exception as e:
         return jsonify({'message': f'Ocorreu um erro inesperado: {str(e)}'}), 500
 
-@bp.route('/api/projeto/<int:projeto_id>/alunos', methods=['GET'])
+@bp.route('/api/projeto/<uuid:projeto_id>/alunos', methods=['GET'])
 @jwt_required()
 @role_required(['Admin', 'Professor'])
 def listar_alunos_projeto(projeto_id):
     try:
-        projeto = Projeto.query.filter_by(id=projeto_id).first()
+        projeto = Projeto.query.filter_by(id=str(projeto_id)).first()
 
         if not projeto:
             return jsonify({'msg': 'Projeto não encontrado'}), 404
 
-        alunos_projeto = AlunoProjeto.query.filter_by(projeto_id=projeto_id).all()
+        alunos_projeto = AlunoProjeto.query.filter_by(projeto_id=str(projeto_id)).all()
 
         if not alunos_projeto:
             return jsonify({'msg': 'Nenhum aluno cadastrado neste projeto'}), 404
@@ -65,34 +65,34 @@ def listar_alunos_projeto(projeto_id):
         return jsonify({'msg': f'Ocorreu um erro: {str(e)}'}), 500
 
 
-@bp.route('/api/aprovar/<int:projeto_id>/aluno/<int:aluno_id>', methods=['POST'])
+@bp.route('/api/aprovar/<uuid:projeto_id>/aluno/<uuid:aluno_id>', methods=['POST'])
 @jwt_required()
 @role_required('professor')
 def aprovar_aluno_no_projeto(projeto_id, aluno_id):
     try:
-        response, status_code = ProjetoService.aprovar_aluno_projeto(aluno_id, projeto_id)
+        response, status_code = ProjetoService.aprovar_aluno_projeto(str(aluno_id), str(projeto_id))
 
         return jsonify(response), status_code
 
     except Exception as e:
         return jsonify({"message": f"Erro ao aprovar aluno no projeto: {str(e)}"}), 500
 
-@bp.route('/api/projeto/<int:projeto_id>/aluno/<int:aluno_id>/rejeitar', methods=['POST'])
+@bp.route('/api/projeto/<uuid:projeto_id>/aluno/<uuid:aluno_id>/rejeitar', methods=['POST'])
 @jwt_required()
 @role_required('professor')
 def rejeitar_aluno_no_projeto(projeto_id, aluno_id):
     try:
-        response, status_code = ProjetoService.rejeitar_aluno_projeto(aluno_id, projeto_id)
+        response, status_code = ProjetoService.rejeitar_aluno_projeto(str(aluno_id), str(projeto_id))
         return jsonify(response), status_code
 
     except Exception as e:
         return jsonify({"msg": f"Erro inesperado ao rejeitar aluno do projeto: {str(e)}"}), 500
 
-@bp.route('/api/listar/projeto/<int:projeto_id>', methods=['GET'])
+@bp.route('/api/listar/projeto/<uuid:projeto_id>', methods=['GET'])
 @jwt_required()
 def listar_projetos(projeto_id):
     try:
-        projeto = Projeto.query.filter_by(id=projeto_id).first()
+        projeto = Projeto.query.filter_by(id=str(projeto_id)).first()
 
         if not projeto:
             return jsonify({'msg': 'Projeto não encontrado'}), 404
@@ -230,7 +230,7 @@ def list_projects_pendentes():
     except Exception as e:
         return jsonify({'message': f'Ocorreu um erro inesperado: {str(e)}'}), 500
 
-@bp.route('/api/editar/projeto/<int:projeto_id>', methods=['PUT'])
+@bp.route('/api/editar/projeto/<uuid:projeto_id>', methods=['PUT'])
 @jwt_required()
 def editar_projeto(projeto_id):
     try:
@@ -252,7 +252,7 @@ def editar_projeto(projeto_id):
 
         response = ProjetoService.edit_projeto(
             user_email=current_user['email'],
-            projeto_id=projeto_id,
+            projeto_id=str(projeto_id),
             vagas=data.get('vagas'),
             titulacao=data.get('titulacao'),
             curso=data.get('curso'),
@@ -283,7 +283,7 @@ def editar_projeto(projeto_id):
     except Exception as e:
         return jsonify({'msg': f'Ocorreu um erro inesperado: {str(e)}'}), 500
 
-@bp.route('/api/register/aluno_projeto/<int:projeto_id>', methods=['POST'])
+@bp.route('/api/register/aluno_projeto/<uuid:projeto_id>', methods=['POST'])
 @jwt_required()
 def register_aluno(projeto_id):
     try:
@@ -304,7 +304,7 @@ def register_aluno(projeto_id):
             'permissao': aluno.permissao
         }
 
-        response, status_code = ProjetoService.register_aluno_projeto(aluno.matricula, projeto_id)
+        response, status_code = ProjetoService.register_aluno_projeto(aluno.matricula, str(projeto_id))
 
         return jsonify({'aluno': aluno_data, **response}), status_code
 
