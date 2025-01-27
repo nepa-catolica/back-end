@@ -35,7 +35,7 @@ def create_projeto():
 
 @bp.route('/api/projeto/<int:projeto_id>/alunos', methods=['GET'])
 @jwt_required()
-@role_required('professor')
+@role_required(['Admin', 'professor'])
 def listar_alunos_projeto(projeto_id):
     try:
         projeto = Projeto.query.filter_by(id=projeto_id).first()

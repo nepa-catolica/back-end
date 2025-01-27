@@ -56,7 +56,7 @@ def publicar_edital():
 
 @bp.route('/api/edital/exibir', methods=['GET'])
 @jwt_required()
-@role_required(['Admin', 'professor'])
+@role_required(['Admin', 'Professor'])
 def listar_editais():
     try:
         editais = Edital.query.all()
@@ -81,7 +81,7 @@ def listar_editais():
 
 @bp.route('/api/edital/exibir/<string:slug>', methods=['GET'])
 @jwt_required()
-@role_required(['Admin', 'professor'])
+@role_required(['Admin', 'Professor'])
 def exibir_edital(slug):
     try:
         edital = Edital.query.filter_by(slug=slug).first()
@@ -118,7 +118,7 @@ def deletar_edital(edital_id):
     return jsonify({"message": response['message']}), response['status']
 
 
-@bp.route('/api/aprovar/professor/<int:professor_id>', methods=['POST'])
+@bp.route('/api/aprovar/professor/<uuid:professor_id>', methods=['POST'])
 @jwt_required()
 @role_required('Admin')
 def aprovar_professor(professor_id):
