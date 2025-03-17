@@ -1,6 +1,6 @@
 from flask import Flask
 from dotenv import load_dotenv
-from src.utils.extensions import db, jwt, migrate
+from src.utils.extensions import db, jwt, migrate, ma
 from flask_cors import CORS
 import os
 
@@ -15,6 +15,7 @@ def create_app():
 
     db.init_app(app)
     migrate.init_app(app, db)
+    ma.init_app(app)
     jwt.init_app(app)
 
     CORS(app, resources={r"/*": {"origins": "*"}})
