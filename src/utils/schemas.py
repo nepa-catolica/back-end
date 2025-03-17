@@ -1,5 +1,9 @@
 from marshmallow import Schema, fields, validate
 
+from src.utils.extensions import ma
+from src.utils.models import Professor, Aluno
+
+
 class ProjetoSchema(Schema):
     vagas = fields.Integer(required=True, validate=validate.Range(min=1, error="O número de vagas deve ser ao menos 1"))
     titulacao = fields.String(required=True, validate=validate.Length(min=1, error="Titulação é obrigatória"))
@@ -19,13 +23,18 @@ class ProjetoSchema(Schema):
     referencias = fields.String(required=True, validate=validate.Length(min=1, error="Referências são obrigatórias"))
     termos = fields.Boolean(required=True, error_messages={"required": "É necessário aceitar os termos"})
 
-class AlunoSchema(Schema):
-    id = fields.UUID()
-    nome = fields.Str()
-    matricula = fields.Int()
-    curso = fields.Str()
-    data_ingresso = fields.DateTime()
-    telefone = fields.Str()
-    email = fields.Str()
-    permissao = fields.Str()
 
+class AlunoSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Aluno
+        load_instance = True
+
+
+class ProfessorSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Professor
+        load_instance = True
+
+
+aluno_schema: Schema = AlunoSchema()
+professor_schema: Schema = ProfessorSchema()
