@@ -20,7 +20,7 @@ class ProjetoSchema(Schema):
     termos = fields.Boolean(required=True, error_messages={"required": "É necessário aceitar os termos"})
 
 class AlunoSchema(Schema):
-    id = fields.Int()
+    id = fields.UUID()
     nome = fields.Str()
     matricula = fields.Int()
     curso = fields.Str()
