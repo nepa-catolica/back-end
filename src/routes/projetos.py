@@ -8,6 +8,7 @@ from src.utils.utils import role_required
 
 bp = Blueprint('projetos', __name__)
 
+
 @bp.route('/api/create', methods=['POST'])
 @jwt_required()
 def create_projeto():
@@ -32,6 +33,7 @@ def create_projeto():
 
     except Exception as e:
         return jsonify({'message': f'Ocorreu um erro inesperado: {str(e)}'}), 500
+
 
 @bp.route('/api/projeto/<uuid:projeto_id>/alunos', methods=['GET'])
 @jwt_required()
@@ -77,6 +79,7 @@ def aprovar_aluno_no_projeto(projeto_id, aluno_id):
     except Exception as e:
         return jsonify({"message": f"Erro ao aprovar aluno no projeto: {str(e)}"}), 500
 
+
 @bp.route('/api/projeto/<uuid:projeto_id>/aluno/<uuid:aluno_id>/rejeitar', methods=['POST'])
 @jwt_required()
 @role_required('professor')
@@ -87,6 +90,7 @@ def rejeitar_aluno_no_projeto(projeto_id, aluno_id):
 
     except Exception as e:
         return jsonify({"msg": f"Erro inesperado ao rejeitar aluno do projeto: {str(e)}"}), 500
+
 
 @bp.route('/api/listar/projeto/<uuid:projeto_id>', methods=['GET'])
 @jwt_required()
@@ -118,7 +122,8 @@ def listar_projetos(projeto_id):
             'termos': projeto.termos,
             'data_criacao': projeto.data_criacao.strftime('%Y-%m-%d'),
             'aprovado': projeto.aprovado,
-            'data_limite_edicao': projeto.data_limite_edicao.strftime('%Y-%m-%d') if projeto.data_limite_edicao else None
+            'data_limite_edicao': projeto.data_limite_edicao.strftime(
+                '%Y-%m-%d') if projeto.data_limite_edicao else None
         }
 
         return jsonify(projeto_data), 200
@@ -299,6 +304,7 @@ def list_projects_pendentes():
     except Exception as e:
         return jsonify({'message': f'Ocorreu um erro inesperado: {str(e)}'}), 500
 
+
 @bp.route('/api/editar/projeto/<uuid:projeto_id>', methods=['PUT'])
 @jwt_required()
 def editar_projeto(projeto_id):
@@ -311,7 +317,7 @@ def editar_projeto(projeto_id):
         if not projeto_id:
             return jsonify({'msg': 'O ID do projeto é obrigatório'}), 400
 
-        campos_obrigatorios = ['vagas','titulacao', 'curso', 'titulo', 'linhaDePesquisa', 'situacao', 'descricao',
+        campos_obrigatorios = ['vagas', 'titulacao', 'curso', 'titulo', 'linhaDePesquisa', 'situacao', 'descricao',
                                'palavrasChave', 'localizacao', 'populacao', 'justificativa', 'objetivoGeral',
                                'objetivoEspecifico', 'metodologia', 'cronogramaDeAtividade', 'referencias', 'termos']
 
@@ -351,6 +357,7 @@ def editar_projeto(projeto_id):
 
     except Exception as e:
         return jsonify({'msg': f'Ocorreu um erro inesperado: {str(e)}'}), 500
+
 
 @bp.route('/api/register/aluno_projeto/<uuid:projeto_id>', methods=['POST'])
 @jwt_required()

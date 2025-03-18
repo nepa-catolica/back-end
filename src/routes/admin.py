@@ -1,11 +1,15 @@
+import os
+
 from dotenv import load_dotenv
 from flask import Blueprint, jsonify, request, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from src.utils.models import Admin, Projeto, Professor, Edital
-from ..services.admin_service import AdminService
+
+from src.utils.models import Admin, Projeto, Professor, Edital, Aluno
 from src.utils.utils import role_required
-import os
-from uuid import UUID
+from ..services.admin_service import AdminService
+from ..services.auth_service import AuthService, ph
+from ..utils.extensions import db
+from ..utils.schemas import professor_schema, aluno_schema
 
 load_dotenv()
 
@@ -160,8 +164,6 @@ def detalhes_professor(professor_id):
         if not professor:
             return jsonify({'message': 'Professor não encontrado'}), 404
 
-        projetos = Projeto.query.filter_by(professor_id=str(professor_id)).all()
-
         professor_data = {
             'id': professor.id,
             'nome': professor.nome,
@@ -175,6 +177,30 @@ def detalhes_professor(professor_id):
 
     except Exception as e:
         return jsonify({'message': f'Erro ao obter detalhes do professor: {str(e)}'}), 500
+    
+@bp.route('/api/aluno/<uuid:aluno_id>/detalhes', methods=['GET'])
+@jwt_required()
+@role_required('Admin')
+def detalhes_aluno(aluno_id):
+    try:
+        aluno = Aluno.query.filter(Aluno.id == str(aluno_id)).first()
+
+        if not aluno:
+            return jsonify({'message': 'Professor não encontrado'}), 404
+
+        aluno_data = {
+            'id': aluno.id,
+            'nome': aluno.nome,
+            'email': aluno.email,
+            'matricula': aluno.matricula,
+            'curso': aluno.curso,
+            'telefone': aluno.telefone,
+        }
+
+        return jsonify({'aluno': aluno_data}), 200
+
+    except Exception as e:
+        return jsonify({'message': f'Erro ao obter detalhes do aluno: {str(e)}'}), 500
 
 
 @bp.route('/api/projeto/<uuid:projeto_id>/detalhes', methods=['GET'])
@@ -225,11 +251,7 @@ def detalhes_projeto(projeto_id):
 @role_required('Admin')
 def listar_professores_pendentes():
     try:
-        current_user = get_jwt_identity()
-        print(f"JWT Identity: {current_user}")
-
         professor_list = AdminService.listar_professor_pendentes()
-        print(f"Professores Pendentes: {professor_list}")
 
         if not professor_list:
             return jsonify({"message": "Nenhum professor pendente encontrado."}), 200
@@ -247,7 +269,6 @@ def listar_professores_pendentes():
         return jsonify(professores_data), 200
 
     except Exception as e:
-        print(f"Erro ao listar professores pendentes: {e}")
         return jsonify({"message": "Erro ao listar professores pendentes", "error": str(e)}), 500
 
 
@@ -255,10 +276,6 @@ def listar_professores_pendentes():
 @jwt_required()
 @role_required('Admin')
 def listar_professores_aprovados():
-    current_user = get_jwt_identity()
-    if current_user['role'] != 'Admin':
-        return jsonify({"message": "Access denied"}), 403
-
     try:
         professor_list = AdminService.listar_professores_aprovados()
         professores_data = [
@@ -274,11 +291,6 @@ def listar_professores_aprovados():
 @jwt_required()
 @role_required('Admin')
 def aprovar_projeto(projeto_id):
-    current_user = get_jwt_identity()
-
-    if current_user['role'] != 'Admin':
-        return jsonify({"message": "Access denied"}), 403
-
     try:
         projeto_aprovado = AdminService.aprovar_projeto(str(projeto_id))
 
@@ -303,11 +315,6 @@ def aprovar_projeto(projeto_id):
 @jwt_required()
 @role_required('Admin')
 def rejeitar_projeto(projeto_id):
-    current_user = get_jwt_identity()
-
-    if current_user['role'] != 'Admin':
-        return jsonify({"message": "Access denied"}), 403
-
     try:
         projeto_rejeitado = AdminService.rejeitar_projeto(projeto_id)
 
@@ -327,3 +334,79 @@ def rejeitar_projeto(projeto_id):
 
     except Exception as e:
         return jsonify({"message": "Erro ao rejeitar o projeto", "error": str(e)}), 400
+
+
+@bp.route("/api/professores", methods=["GET"])
+@jwt_required()
+@role_required("Admin")
+def listar_professores():
+    professores = db.scalars(db.select(Professor).order_by(Professor.id)).all()
+    if not professores:
+        return jsonify({"message": "Nenhum professor encontrado"}), 404
+
+    return professor_schema.dump(professores, many=True), 200
+
+
+@bp.route("/api/professor/<uuid:professor_id>/senha/", methods=["PUT"])
+@jwt_required()
+@role_required("Admin")
+def redefinir_senha_professor(professor_id):
+    try:
+        json = request.json
+        if "password" not in json:
+            return jsonify({"message": "Senha não informada"}), 400
+
+        senha = json['password']
+        if not AuthService.is_strong_password(senha):
+            return jsonify({"message": "A senha deve conter ao menos 8 caracteres, incluindo letras e números"}), 400
+
+        professor: Professor = Professor.query.filter(Professor.id == str(professor_id)).first()
+        print(professor)
+
+        if not professor:
+            return jsonify({"message": "Professor não encontrado"}), 404
+
+        professor.password = ph.hash(senha)
+        db.session.commit()
+
+        return jsonify({"message": "Senha redefinida com sucesso"}), 200
+
+    except Exception as e:
+        return jsonify({"message": "Erro interno no servidor", "error": str(e)}), 500
+
+
+@bp.route("/api/alunos", methods=["GET"])
+@jwt_required()
+@role_required("Admin")
+def listar_alunos():
+    alunos = Aluno.query.order_by(Aluno.id).all()
+    if not alunos:
+        return jsonify({"message": "Nenhum aluno encontrado"}), 404
+    
+    return aluno_schema.dump(alunos, many=True), 200
+
+
+@bp.route("/api/aluno/<uuid:aluno_id>/senha", methods=["PUT"])
+@jwt_required()
+@role_required("Admin")
+def redefinir_senha_aluno(aluno_id):
+    try:
+        json = request.json
+        if "password" not in json:
+            return jsonify({"message": "Senha não informada"}), 400
+
+        senha = json['password']
+        if not AuthService.is_strong_password(senha):
+            return jsonify({"message": "A senha deve conter ao menos 8 caracteres, incluindo letras e números"}), 400
+
+        aluno: Aluno = Aluno.query.filter(Aluno.id == str(aluno_id)).first()
+        if not aluno:
+            return jsonify({"message": "Aluno não encontrado"}), 404
+
+        aluno.password = ph.hash(senha)
+        db.session.commit()
+
+        return jsonify({"message": "Senha redefinida com sucesso"}), 200
+
+    except Exception as e:
+        return jsonify({"message": "Erro interno no servidor", "error": str(e)}), 500
