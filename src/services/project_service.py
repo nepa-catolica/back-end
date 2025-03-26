@@ -22,18 +22,18 @@ class ProjetoService:
 
         aluno_projeto = AlunoProjeto.query.filter_by(aluno_id=aluno.id, projeto_id=projeto.id).first()
 
+        if aluno_projeto and aluno_projeto.reprovado:
+            return {'msg': 'Aluno foi reprovado anteriormente e não pode se cadastrar novamente neste projeto'}, 400
+
         if aluno_projeto:
             return {'msg': 'Aluno já está cadastrado neste projeto'}, 400
 
-        if projeto.vagas <= 0:
+        if projeto.vagas_ocupadas >= projeto.vagas:
             return {'msg': 'Não há vagas disponiveis para o projeto atual.'}, 400
 
         cadastro_aluno_projeto = AlunoProjeto(aluno_id=aluno.id, projeto_id=projeto.id)
 
         db.session.add(cadastro_aluno_projeto)
-
-        projeto.vagas -= 1
-
         db.session.commit()
 
         return {'msg': 'Aluno cadastrado com sucesso no projeto', 'aluno_projeto': {
@@ -61,15 +61,20 @@ class ProjetoService:
 
         if aluno_projeto.aprovado:
             return {'msg': 'Aluno já se encontra aprovado no projeto'}, 400
+        
+        if projeto.vagas_ocupadas >= projeto.vagas:
+            return {'msg': 'Não há vagas disponiveis para o projeto atual.'}, 400
 
-        aluno_projeto.aprovado = True
+        aluno_projeto.aprovar()
+        projeto.vagas_ocupadas += 1
         db.session.commit()
 
         aluno_projeto_data = {
             'id': aluno_projeto.id,
             'aluno_id': aluno_projeto.aluno_id,
             'projeto_id': aluno_projeto.projeto_id,
-            'aprovado': aluno_projeto.aprovado
+            'aprovado': aluno_projeto.aprovado,
+            'reprovado': aluno_projeto.reprovado
         }
 
         return {'msg': 'Aluno aprovado com sucesso no projeto', 'aluno_projeto': aluno_projeto_data}, 200
@@ -89,14 +94,15 @@ class ProjetoService:
             if not aluno_projeto:
                 return {'msg': 'Aluno não está cadastrado neste projeto'}, 404
 
-            db.session.delete(aluno_projeto)
+            aluno_projeto.reprovar()
             db.session.commit()
 
             aluno_projeto_data = {
                 'id': aluno_projeto.id,
                 'aluno_id': aluno_projeto.aluno_id,
                 'projeto_id': aluno_projeto.projeto_id,
-                'aprovado': aluno_projeto.aprovado
+                'aprovado': aluno_projeto.aprovado,
+                'reprovado': aluno_projeto.reprovado
             }
 
             return {'msg': 'Aluno rejeitado e removido do projeto', 'aluno_projeto': aluno_projeto_data}, 200

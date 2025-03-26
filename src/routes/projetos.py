@@ -58,7 +58,8 @@ def listar_alunos_projeto(projeto_id):
                 'email': p.aluno.email,
                 'matricula': p.aluno.matricula,
                 'curso': p.aluno.curso,
-                'aprovado': p.aprovado
+                'aprovado': p.aprovado,
+                'reprovado': p.reprovado
             }
             for p in alunos_projeto
         ]
@@ -108,6 +109,7 @@ def listar_projetos(projeto_id):
             'titulo': projeto.titulo,
             'descricao': projeto.descricao,
             'vagas': projeto.vagas,
+            'vagas_ocupadas': projeto.vagas_ocupadas,
             'titulacao': projeto.titulacao,
             'curso': projeto.curso,
             'linhaDePesquisa': projeto.linhaDePesquisa,
@@ -155,7 +157,8 @@ def list_projects_aprovado():
                     'email': aluno_projeto.aluno.email,
                     'matricula': aluno_projeto.aluno.matricula,
                     'curso': aluno_projeto.aluno.curso,
-                    'aprovado': aluno_projeto.aprovado
+                    'aprovado': aluno_projeto.aprovado,
+                    'reprovado': aluno_projeto.reprovado
                 }
                 for aluno_projeto in alunos_projeto
             ]
@@ -165,6 +168,7 @@ def list_projects_aprovado():
                 'titulo': projeto.titulo,
                 'descricao': projeto.descricao,
                 'vagas': projeto.vagas,
+                'vagas_ocupadas': projeto.vagas_ocupadas,
                 'professor': {
                     'id': projeto.professor.id,
                     'nome': projeto.professor.nome,
@@ -224,6 +228,7 @@ def listar_meus_projetos():
                 'titulo': projeto.titulo,
                 'descricao': projeto.descricao,
                 'vagas': projeto.vagas,
+                'vagas_ocupadas': projeto.vagas_ocupadas,
                 'titulacao': projeto.titulacao,
                 'curso': projeto.curso,
                 'linhaDePesquisa': projeto.linhaDePesquisa,
@@ -271,6 +276,7 @@ def list_projects_pendentes():
             'titulo': projeto.titulo,
             'descricao': projeto.descricao,
             'vagas': projeto.vagas,
+            'vagas_ocupadas': projeto.vagas_ocupadas,
             'titulacao': projeto.titulacao,
             'curso': projeto.curso,
             'linhaDePesquisa': projeto.linhaDePesquisa,

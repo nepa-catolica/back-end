@@ -31,8 +31,8 @@ class Projeto(db.Model):
     id = db.Column(db.VARCHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     professor_id = db.Column(db.String(36), db.ForeignKey('professor.id'), nullable=False)
     professor = db.relationship('Professor', back_populates='projetos_propostos')
-
-    vagas = db.Column(db.Integer, nullable=False, default=0)
+    vagas = db.Column(db.Integer, nullable=False)
+    vagas_ocupadas = db.Column(db.Integer, default=0, nullable=True)
     titulacao = db.Column(db.String(255), nullable=False)
     curso = db.Column(db.String(255), nullable=False)
     titulo = db.Column(db.String(255), nullable=False)
@@ -64,8 +64,17 @@ class AlunoProjeto(db.Model):
     aluno_id = db.Column(db.String(36), db.ForeignKey('aluno.id'), nullable=False)
     projeto_id = db.Column(db.String(36), db.ForeignKey('projeto.id'), nullable=False)
     aprovado = db.Column(db.Boolean, default=False, nullable=False)
+    reprovado = db.Column(db.Boolean, default=False, nullable=True)
     aluno = db.relationship('Aluno', back_populates='projetos')
     projeto = db.relationship('Projeto', back_populates='alunos_cadastrados')
+
+    def aprovar(self):
+        self.aprovado = True
+        self.reprovado = False
+    
+    def reprovar(self):
+        self.aprovado = False
+        self.reprovado = True
 
 class Admin(db.Model):
     id = db.Column(db.VARCHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
