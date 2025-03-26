@@ -54,6 +54,8 @@ def listar_alunos_projeto(projeto_id):
             {
                 'aluno_id': p.aluno_id,
                 'nome': p.aluno.nome,
+                'telefone': p.aluno.telefone,
+                'email': p.aluno.email,
                 'matricula': p.aluno.matricula,
                 'curso': p.aluno.curso,
                 'aprovado': p.aprovado
