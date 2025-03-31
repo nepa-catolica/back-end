@@ -15,7 +15,7 @@ ph = PasswordHasher()
 class AuthService:
     @staticmethod
     def is_strong_password(password):
-        return len(password) > 8
+        return len(password) > 1
 
     @staticmethod
     def create_user_aluno(nome, email, matricula, curso, telefone, password):
