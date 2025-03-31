@@ -9,6 +9,8 @@ class ProjetoService:
     def register_aluno_projeto(matricula, projeto_id):
         aluno = Aluno.query.filter_by(matricula=matricula).first()
 
+        print(aluno)
+
         if not aluno:
             return {'msg': 'Aluno não encontrado'}, 404
 
@@ -19,16 +21,17 @@ class ProjetoService:
 
         if not projeto.aprovado:
             return {'msg': 'Projeto atual não está disponivel ou não foi aprovado.'}, 400
+        
+        vagas_ocupadas = projeto.vagas_ocupadas if projeto.vagas_ocupadas is not None else 0
 
         aluno_projeto = AlunoProjeto.query.filter_by(aluno_id=aluno.id, projeto_id=projeto.id).first()
 
-        if aluno_projeto and aluno_projeto.reprovado:
-            return {'msg': 'Aluno foi reprovado anteriormente e não pode se cadastrar novamente neste projeto'}, 400
-
         if aluno_projeto:
+            if aluno_projeto.reprovado:
+                return {'msg': 'Aluno foi reprovado anteriormente e não pode se cadastrar novamente neste projeto'}, 400
             return {'msg': 'Aluno já está cadastrado neste projeto'}, 400
 
-        if projeto.vagas_ocupadas >= projeto.vagas:
+        if vagas_ocupadas >= projeto.vagas:
             return {'msg': 'Não há vagas disponiveis para o projeto atual.'}, 400
 
         cadastro_aluno_projeto = AlunoProjeto(aluno_id=aluno.id, projeto_id=projeto.id)
