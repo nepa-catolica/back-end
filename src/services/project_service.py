@@ -2,85 +2,95 @@ from datetime import datetime
 from sqlalchemy.exc import SQLAlchemyError
 from src.utils.models import Projeto, Professor, Aluno, AlunoProjeto
 from src.utils.extensions import db
+import sentry_sdk as sentry
+
 
 class ProjetoService:
 
     @staticmethod
     def register_aluno_projeto(matricula, projeto_id):
-        aluno = Aluno.query.filter_by(matricula=matricula).first()
+        try:
+            aluno = Aluno.query.filter_by(matricula=matricula).first()
 
-        print(aluno)
+            if not aluno:
+                return {'msg': 'Aluno não encontrado'}, 404
 
-        if not aluno:
-            return {'msg': 'Aluno não encontrado'}, 404
+            projeto = Projeto.query.filter_by(id=projeto_id).first()
 
-        projeto = Projeto.query.filter_by(id=projeto_id).first()
+            if not projeto:
+                return {'msg': 'Projeto não encontrado'}, 404
 
-        if not projeto:
-            return {'msg': 'Projeto não encontrado'}, 404
+            if not projeto.aprovado:
+                return {'msg': 'Projeto atual não está disponivel ou não foi aprovado.'}, 400
 
-        if not projeto.aprovado:
-            return {'msg': 'Projeto atual não está disponivel ou não foi aprovado.'}, 400
-        
-        vagas_ocupadas = projeto.vagas_ocupadas if projeto.vagas_ocupadas is not None else 0
+            aluno_projeto = AlunoProjeto.query.filter_by(aluno_id=aluno.id, projeto_id=projeto.id).first()
 
-        aluno_projeto = AlunoProjeto.query.filter_by(aluno_id=aluno.id, projeto_id=projeto.id).first()
+            if aluno_projeto:
+                if aluno_projeto.reprovado:
+                    return {'msg': 'Aluno foi reprovado anteriormente e não pode se cadastrar novamente neste projeto'}, 400
+                return {'msg': 'Aluno já está cadastrado neste projeto'}, 400
 
-        if aluno_projeto:
-            if aluno_projeto.reprovado:
-                return {'msg': 'Aluno foi reprovado anteriormente e não pode se cadastrar novamente neste projeto'}, 400
-            return {'msg': 'Aluno já está cadastrado neste projeto'}, 400
+            if projeto.vagas_ocupadas >= projeto.vagas:
+                return {'msg': 'Não há vagas disponiveis para o projeto atual.'}, 400
 
-        if vagas_ocupadas >= projeto.vagas:
-            return {'msg': 'Não há vagas disponiveis para o projeto atual.'}, 400
+            cadastro_aluno_projeto = AlunoProjeto(aluno_id=aluno.id, projeto_id=projeto.id)
 
-        cadastro_aluno_projeto = AlunoProjeto(aluno_id=aluno.id, projeto_id=projeto.id)
+            db.session.add(cadastro_aluno_projeto)
+            db.session.commit()
 
-        db.session.add(cadastro_aluno_projeto)
-        db.session.commit()
+            return {'msg': 'Aluno cadastrado com sucesso no projeto', 'aluno_projeto': {
+                'aluno_id': cadastro_aluno_projeto.aluno_id,
+                'projeto_id': cadastro_aluno_projeto.projeto_id
+            }}, 201
 
-        return {'msg': 'Aluno cadastrado com sucesso no projeto', 'aluno_projeto': {
-            'aluno_id': cadastro_aluno_projeto.aluno_id,
-            'projeto_id': cadastro_aluno_projeto.projeto_id
-        }}, 201
+        except Exception as e:
+            db.session.rollback()
+            sentry.capture_exception(e)
+            return {'msg': f'Erro ao registrar aluno no projeto: {str(e)}'}, 500
 
     @staticmethod
     def aprovar_aluno_projeto(aluno_id, projeto_id):
 
-        aluno = Aluno.query.filter_by(id=aluno_id).first()
+        try:
+            aluno = Aluno.query.filter_by(id=aluno_id).first()
 
-        if not aluno:
-            return {'msg': 'Aluno não encontrado'}, 404
+            if not aluno:
+                return {'msg': 'Aluno não encontrado'}, 404
 
-        projeto = Projeto.query.filter_by(id=projeto_id).first()
+            projeto = Projeto.query.filter_by(id=projeto_id).first()
 
-        if not projeto:
-            return {'msg': 'Projeto não encontrado'}, 404
+            if not projeto:
+                return {'msg': 'Projeto não encontrado'}, 404
 
-        aluno_projeto = AlunoProjeto.query.filter_by(aluno_id=aluno.id, projeto_id=projeto.id).first()
+            aluno_projeto = AlunoProjeto.query.filter_by(aluno_id=aluno.id, projeto_id=projeto.id).first()
 
-        if not aluno_projeto:
-            return {'msg': 'Aluno não está cadastrado neste projeto'}, 404
+            if not aluno_projeto:
+                return {'msg': 'Aluno não está cadastrado neste projeto'}, 404
 
-        if aluno_projeto.aprovado:
-            return {'msg': 'Aluno já se encontra aprovado no projeto'}, 400
-        
-        if projeto.vagas_ocupadas >= projeto.vagas:
-            return {'msg': 'Não há vagas disponiveis para o projeto atual.'}, 400
+            if aluno_projeto.aprovado:
+                return {'msg': 'Aluno já se encontra aprovado no projeto'}, 400
 
-        aluno_projeto.aprovar()
-        projeto.vagas_ocupadas += 1
-        db.session.commit()
+            if projeto.vagas_ocupadas >= projeto.vagas:
+                return {'msg': 'Não há vagas disponiveis para o projeto atual.'}, 400
 
-        aluno_projeto_data = {
-            'id': aluno_projeto.id,
-            'aluno_id': aluno_projeto.aluno_id,
-            'projeto_id': aluno_projeto.projeto_id,
-            'aprovado': aluno_projeto.aprovado,
-            'reprovado': aluno_projeto.reprovado
-        }
+            aluno_projeto.aprovar()
+            projeto.vagas_ocupadas += 1
+            db.session.commit()
 
-        return {'msg': 'Aluno aprovado com sucesso no projeto', 'aluno_projeto': aluno_projeto_data}, 200
+            aluno_projeto_data = {
+                'id': aluno_projeto.id,
+                'aluno_id': aluno_projeto.aluno_id,
+                'projeto_id': aluno_projeto.projeto_id,
+                'aprovado': aluno_projeto.aprovado,
+                'reprovado': aluno_projeto.reprovado
+            }
+
+            return {'msg': 'Aluno aprovado com sucesso no projeto', 'aluno_projeto': aluno_projeto_data}, 200
+
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            sentry.capture_exception(e)
+            return {'msg': f'Erro ao aprovar aluno do projeto: {str(e)}'}, 500
 
     @staticmethod
     def rejeitar_aluno_projeto(aluno_id, projeto_id):
@@ -112,6 +122,7 @@ class ProjetoService:
 
         except SQLAlchemyError as e:
             db.session.rollback()
+            sentry.capture_exception(e)
             return {'msg': f'Erro ao rejeitar aluno do projeto: {str(e)}'}, 500
 
 
@@ -123,6 +134,7 @@ class ProjetoService:
             projeto = Projeto(
                 professor_id=professor_id,
                 vagas=vagas,
+                vagas_ocupadas=0,
                 titulacao=titulacao,
                 curso=curso,
                 titulo=titulo,
@@ -150,6 +162,7 @@ class ProjetoService:
 
         except SQLAlchemyError as e:
             db.session.rollback()
+            sentry.capture_exception(e)
             return {'msg': f'Erro ao registrar projeto no banco de dados: {str(e)}', 'status': 500}
 
     @staticmethod
@@ -195,8 +208,10 @@ class ProjetoService:
 
         except SQLAlchemyError as e:
             db.session.rollback()
+            sentry.capture_exception(e)
             return {'msg': f'Erro ao acessar o banco de dados: {str(e)}', 'status': 500}
 
         except Exception as e:
             db.session.rollback()
+            sentry.capture_exception(e)
             return {'msg': f'Ocorreu um erro inesperado ao editar o projeto: {str(e)}', 'status': 500}

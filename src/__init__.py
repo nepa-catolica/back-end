@@ -6,7 +6,25 @@ from src.utils.extensions import db, jwt, migrate, ma
 from flask_cors import CORS
 import os
 
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
+import logging
+
 load_dotenv()
+
+sentry_logging = LoggingIntegration(
+    level=logging.INFO,
+    event_level=logging.ERROR
+)
+
+sentry_sdk.init(
+    dsn=os.getenv("SENTRY_DSN"),
+    integrations=[FlaskIntegration(), sentry_logging],
+    traces_sample_rate=1.0,
+    environment=os.getenv("FLASK_ENV_ENVIRONMENT", "production")
+)
+
 
 def create_app():
     app = Flask(__name__)

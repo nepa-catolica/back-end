@@ -1,5 +1,5 @@
 import os
-
+import sentry_sdk as sentry
 from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.utils import secure_filename
 from src.utils.extensions import db
@@ -65,13 +65,16 @@ class AdminService:
             return new_edital
 
         except FileNotFoundError as e:
+            sentry.capture_exception(e)
             raise Exception(f"Erro ao salvar o arquivo: {str(e)}")
 
         except SQLAlchemyError as e:
+            sentry.capture_exception(e)
             db.session.rollback()
             raise Exception(f"Erro ao salvar o edital no banco de dados: {str(e)}")
 
         except Exception as e:
+            sentry.capture_exception(e)
             db.session.rollback()
             raise Exception(f"Erro inesperado: {str(e)}")
 
@@ -97,28 +100,40 @@ class AdminService:
 
         except SQLAlchemyError as e:
             db.session.rollback()
+            sentry.capture_exception(e)
             return {'message': f'Erro ao deletar o edital no banco de dados: {str(e)}', 'status': 500}
 
         except Exception as e:
+            sentry.capture_exception(e)
             return {'message': f'Erro inesperado: {str(e)}', 'status': 500}
 
     @staticmethod
     def aprovar_professor(professor_id):
-        professor = Professor.query.get(professor_id)
-        if professor:
-            professor.aprovado = True
-            db.session.commit()
-            return professor
-        return None
+        try:
+            professor = Professor.query.get(professor_id)
+            if professor:
+                professor.aprovado = True
+                db.session.commit()
+                return professor
+            return None
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            sentry.capture_exception(e)
+            return None
 
     @staticmethod
     def rejeitar_professor(professor_id):
-        professor = Professor.query.get(professor_id)
-        if professor:
-            professor.aprovado = False
-            db.session.commit()
-            return professor
-        return None
+        try:
+            professor = Professor.query.get(professor_id)
+            if professor:
+                professor.aprovado = False
+                db.session.commit()
+                return professor
+            return None
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            sentry.capture_exception(e)
+            return None
 
     @staticmethod
     def listar_professor_pendentes():
@@ -130,18 +145,28 @@ class AdminService:
 
     @staticmethod
     def aprovar_projeto(projeto_id):
-        projeto = Projeto.query.get(projeto_id)
-        if projeto:
-            projeto.aprovado = True
-            db.session.commit()
-            return projeto
-        return None
+        try:
+            projeto = Projeto.query.get(projeto_id)
+            if projeto:
+                projeto.aprovado = True
+                db.session.commit()
+                return projeto
+            return None
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            sentry.capture_exception(e)
+            return None
 
     @staticmethod
     def rejeitar_projeto(projeto_id):
-        projeto = Projeto.query.get(projeto_id)
-        if projeto:
-            projeto.aprovado = False
-            db.session.commit()
-            return projeto
-        return None
+        try:
+            projeto = Projeto.query.get(projeto_id)
+            if projeto:
+                projeto.aprovado = False
+                db.session.commit()
+                return projeto
+            return None
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            sentry.capture_exception(e)
+            return None

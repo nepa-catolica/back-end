@@ -5,6 +5,7 @@ from src.utils.models import Professor, Projeto, Aluno, AlunoProjeto
 from ..services.project_service import ProjetoService
 from src.utils.schemas import ProjetoSchema
 from src.utils.utils import role_required
+import sentry_sdk as sentry
 
 bp = Blueprint('projetos', __name__)
 
@@ -32,6 +33,7 @@ def create_projeto():
         return jsonify({'message': response['msg']}), response['status']
 
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({'message': f'Ocorreu um erro inesperado: {str(e)}'}), 500
 
 
@@ -67,6 +69,7 @@ def listar_alunos_projeto(projeto_id):
         return jsonify({'alunos': alunos_data}), 200
 
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({'msg': f'Ocorreu um erro: {str(e)}'}), 500
 
 
@@ -80,6 +83,7 @@ def aprovar_aluno_no_projeto(projeto_id, aluno_id):
         return jsonify(response), status_code
 
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({"message": f"Erro ao aprovar aluno no projeto: {str(e)}"}), 500
 
 
@@ -92,6 +96,7 @@ def rejeitar_aluno_no_projeto(projeto_id, aluno_id):
         return jsonify(response), status_code
 
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({"msg": f"Erro inesperado ao rejeitar aluno do projeto: {str(e)}"}), 500
 
 
@@ -133,6 +138,7 @@ def listar_projetos(projeto_id):
         return jsonify(projeto_data), 200
 
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({'msg': f'Ocorreu um erro: {str(e)}'}), 500
 
 
@@ -185,9 +191,11 @@ def list_projects_aprovado():
         return jsonify(projetos_data), 200
 
     except SQLAlchemyError as e:
+        sentry.capture_exception(e)
         return jsonify({'message': 'Erro ao acessar o banco de dados', 'error': str(e)}), 500
 
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({'message': f'Ocorreu um erro inesperado: {str(e)}'}), 500
 
 
@@ -255,9 +263,11 @@ def listar_meus_projetos():
         return jsonify(projetos_data), 200
 
     except SQLAlchemyError as e:
+        sentry.capture_exception(e)
         return jsonify({'message': 'Erro ao acessar o banco de dados', 'error': str(e)}), 500
 
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({'message': f'Ocorreu um erro inesperado: {str(e)}'}), 500
 
 
@@ -307,9 +317,11 @@ def list_projects_pendentes():
         return jsonify(projetos_data), 200
 
     except SQLAlchemyError as e:
+        sentry.capture_exception(e)
         return jsonify({'message': 'Erro ao acessar o banco de dados', 'error': str(e)}), 500
 
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({'message': f'Ocorreu um erro inesperado: {str(e)}'}), 500
 
 
@@ -358,12 +370,15 @@ def editar_projeto(projeto_id):
         return jsonify({'msg': response['msg']}), response['status']
 
     except KeyError as e:
+        sentry.capture_exception(e)
         return jsonify({'msg': f'Campo obrigatório ausente: {str(e)}'}), 400
 
     except ValueError as e:
+        sentry.capture_exception(e)
         return jsonify({'msg': f'Valor inválido: {str(e)}'}), 400
 
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({'msg': f'Ocorreu um erro inesperado: {str(e)}'}), 500
 
 
@@ -394,4 +409,5 @@ def register_aluno(projeto_id):
         return jsonify({'aluno': aluno_data, **response}), status_code
 
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({'msg': f'Ocorreu um erro: {str(e)}'}), 500

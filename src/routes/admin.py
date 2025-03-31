@@ -1,4 +1,5 @@
 import os
+import sentry_sdk as sentry
 
 from dotenv import load_dotenv
 from flask import Blueprint, jsonify, request, send_file
@@ -54,8 +55,10 @@ def publicar_edital():
         }), 201
 
     except ValueError as e:
+        sentry.capture_exception(e)
         return jsonify({"message": str(e)}), 400
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({"message": "Erro ao criar e publicar o edital.", "error": str(e)}), 500
 
 
@@ -81,6 +84,7 @@ def listar_editais():
         return jsonify(editais_data), 200
 
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({"message": "Erro ao listar os editais.", "error": str(e)}), 500
 
 
@@ -106,6 +110,7 @@ def exibir_edital(slug):
         )
 
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({"message": "Erro ao exibir o edital.", "error": str(e)}), 500
 
 
@@ -113,14 +118,18 @@ def exibir_edital(slug):
 @jwt_required()
 @role_required('Admin')
 def deletar_edital(edital_id):
-    current_user = get_jwt_identity()
-    admin = Admin.query.filter_by(email=current_user.get('email')).first()
+    try:
+        current_user = get_jwt_identity()
+        admin = Admin.query.filter_by(email=current_user.get('email')).first()
 
-    if not admin:
-        return jsonify({"message": "Administrador não encontrado ou sem permissão."}), 403
+        if not admin:
+            return jsonify({"message": "Administrador não encontrado ou sem permissão."}), 403
 
-    response = AdminService.deletar_edital_by_id(str(edital_id), str(admin.id))
-    return jsonify({"message": response['message']}), response['status']
+        response = AdminService.deletar_edital_by_id(str(edital_id), str(admin.id))
+        return jsonify({"message": response['message']}), response['status']
+    except Exception as e:
+        sentry.capture_exception(e)
+        return jsonify({"message": "Erro ao deletar o edital.", "error": str(e)}), 500
 
 
 @bp.route('/api/aprovar/professor/<uuid:professor_id>', methods=['POST'])
@@ -134,6 +143,7 @@ def aprovar_professor(professor_id):
         else:
             return jsonify({"message": "Professor não encontrado"}), 404
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify(
             {"message": "Erro ao aprovar professor", "error": 'Erro interno, tente novamente mais tarde'}), 500
 
@@ -150,6 +160,7 @@ def rejeitar_professor(professor_id):
             return jsonify({"message": "Professor não encontrado"}), 404
 
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify(
             {"message": "Erro ao rejeitar professor", "error": 'Erro interno, tente novamente mais tarde'}), 500
 
@@ -176,8 +187,9 @@ def detalhes_professor(professor_id):
         return jsonify({'professor': professor_data}), 200
 
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({'message': f'Erro ao obter detalhes do professor: {str(e)}'}), 500
-    
+
 @bp.route('/api/aluno/<uuid:aluno_id>/detalhes', methods=['GET'])
 @jwt_required()
 @role_required('Admin')
@@ -200,6 +212,7 @@ def detalhes_aluno(aluno_id):
         return jsonify({'aluno': aluno_data}), 200
 
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({'message': f'Erro ao obter detalhes do aluno: {str(e)}'}), 500
 
 
@@ -243,6 +256,7 @@ def detalhes_projeto(projeto_id):
         return jsonify({'projeto': projeto_data}), 200
 
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({'message': f'Erro ao obter detalhes do projeto: {str(e)}'}), 500
 
 
@@ -252,7 +266,6 @@ def detalhes_projeto(projeto_id):
 def listar_professores_pendentes():
     try:
         professor_list = AdminService.listar_professor_pendentes()
-
         if not professor_list:
             return jsonify({"message": "Nenhum professor pendente encontrado."}), 200
 
@@ -269,6 +282,7 @@ def listar_professores_pendentes():
         return jsonify(professores_data), 200
 
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({"message": "Erro ao listar professores pendentes", "error": str(e)}), 500
 
 
@@ -279,11 +293,19 @@ def listar_professores_aprovados():
     try:
         professor_list = AdminService.listar_professores_aprovados()
         professores_data = [
-            {'id': prof.id, 'nome': prof.nome, 'email': prof.email, 'matricula': prof.matricula, 'curso': prof.curso}
-            for prof in professor_list]
+            {
+                'id': prof.id,
+                'nome': prof.nome,
+                'email': prof.email,
+                'matricula': prof.matricula,
+                'curso': prof.curso
+            }
+            for prof in professor_list
+        ]
         return jsonify(professores_data), 200
 
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({"message": "Erro ao listar professores", "error": str(e)}), 400
 
 
@@ -308,6 +330,7 @@ def aprovar_projeto(projeto_id):
         else:
             return jsonify({"message": "Projeto não encontrado"}), 404
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({"message": "Erro ao aprovar o projeto", "error": str(e)}), 400
 
 
@@ -333,18 +356,22 @@ def rejeitar_projeto(projeto_id):
             return jsonify({"message": "Projeto não encontrado"}), 404
 
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({"message": "Erro ao rejeitar o projeto", "error": str(e)}), 400
 
 
 @bp.route("/api/professores", methods=["GET"])
 @jwt_required()
-@role_required("Admin")
 def listar_professores():
-    professores = db.scalars(db.select(Professor).order_by(Professor.id)).all()
-    if not professores:
-        return jsonify({"message": "Nenhum professor encontrado"}), 404
+    try:
+        professores = db.scalars(db.select(Professor).order_by(Professor.id)).all()
+        if not professores:
+            return jsonify({"message": "Nenhum professor encontrado"}), 404
 
-    return professor_schema.dump(professores, many=True), 200
+        return professor_schema.dump(professores, many=True), 200
+    except Exception as e:
+        sentry.capture_exception(e)
+        return jsonify({"message": "Erro ao listar professores", "error": str(e)}), 500
 
 
 @bp.route("/api/professor/<uuid:professor_id>/senha/", methods=["PUT"])
@@ -372,6 +399,7 @@ def redefinir_senha_professor(professor_id):
         return jsonify({"message": "Senha redefinida com sucesso"}), 200
 
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({"message": "Erro interno no servidor", "error": str(e)}), 500
 
 
@@ -379,11 +407,15 @@ def redefinir_senha_professor(professor_id):
 @jwt_required()
 @role_required("Admin")
 def listar_alunos():
-    alunos = Aluno.query.order_by(Aluno.id).all()
-    if not alunos:
-        return jsonify({"message": "Nenhum aluno encontrado"}), 404
-    
-    return aluno_schema.dump(alunos, many=True), 200
+    try:
+        alunos = Aluno.query.order_by(Aluno.id).all()
+        if not alunos:
+            return jsonify({"message": "Nenhum aluno encontrado"}), 404
+
+        return aluno_schema.dump(alunos, many=True), 200
+    except Exception as e:
+        sentry.capture_exception(e)
+        return jsonify({"message": "Erro ao listar alunos", "error": str(e)}), 500
 
 
 @bp.route("/api/aluno/<uuid:aluno_id>/senha", methods=["PUT"])
@@ -409,4 +441,5 @@ def redefinir_senha_aluno(aluno_id):
         return jsonify({"message": "Senha redefinida com sucesso"}), 200
 
     except Exception as e:
+        sentry.capture_exception(e)
         return jsonify({"message": "Erro interno no servidor", "error": str(e)}), 500

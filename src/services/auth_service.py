@@ -6,6 +6,8 @@ from flask_jwt_extended import create_access_token
 from sqlalchemy.exc import SQLAlchemyError
 from src.utils.extensions import db
 from src.utils.models import Aluno, Professor, Admin
+import sentry_sdk as sentry
+
 
 ph = PasswordHasher()
 
@@ -13,7 +15,7 @@ ph = PasswordHasher()
 class AuthService:
     @staticmethod
     def is_strong_password(password):
-        return len(password) >= 8 and any(c.isdigit() for c in password) and any(c.isalpha() for c in password)
+        return len(password) > 8
 
     @staticmethod
     def create_user_aluno(nome, email, matricula, curso, telefone, password):
@@ -59,6 +61,7 @@ class AuthService:
 
         except SQLAlchemyError as e:
             db.session.rollback()
+            sentry.capture_exception(e)
             return {
                 'msg': f'Erro ao criar aluno no banco de dados: {str(e)}',
                 'status': 500
@@ -119,6 +122,7 @@ class AuthService:
 
         except SQLAlchemyError as e:
             db.session.rollback()
+            sentry.capture_exception(e)
             return {
                 'msg': f'Erro ao criar professor no banco de dados: {str(e)}',
                 'status': 500
@@ -149,6 +153,7 @@ class AuthService:
 
         except SQLAlchemyError as e:
             db.session.rollback()
+            sentry.capture_exception(e)
             return {'msg': f'Erro ao criar admin no banco de dados: {str(e)}', 'status': 500}
 
     @staticmethod
@@ -169,6 +174,7 @@ class AuthService:
 
             return None
         except SQLAlchemyError as e:
+            sentry.capture_exception(e)
             return {'msg': f'Erro ao acessar o banco de dados: {str(e)}', 'status': 500}
 
     @staticmethod
@@ -182,8 +188,10 @@ class AuthService:
             return {'msg': 'Credenciais inválidas', 'status': 401}
 
         except SQLAlchemyError as e:
+            sentry.capture_exception(e)
             return {'msg': f'Erro ao acessar o banco de dados: {str(e)}', 'status': 500}
-        except exceptions.VerifyMismatchError:
+        except exceptions.VerifyMismatchError as e:
+            sentry.capture_exception(e)
             return {'msg': 'Senha incorreta', 'status': 401}
 
     @staticmethod
@@ -206,6 +214,7 @@ class AuthService:
 
             return user
         except SQLAlchemyError as e:
+            sentry.capture_exception(e)
             raise Exception(f'Erro ao acessar o banco de dados: {str(e)}')
 
     @staticmethod
