@@ -6,7 +6,7 @@ import uuid
 class Aluno(db.Model):
     id = db.Column(db.VARCHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     nome = db.Column(db.String(255), unique=True, nullable=False)
-    matricula = db.Column(db.BIGINT, unique=True, nullable=False)
+    matricula = db.Column(db.String(255), unique=True, nullable=False)
     curso = db.Column(db.String(255), nullable=False)
     data_ingresso = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     telefone = db.Column(db.String(20), unique=True, nullable=False)
@@ -71,7 +71,7 @@ class AlunoProjeto(db.Model):
     def aprovar(self):
         self.aprovado = True
         self.reprovado = False
-    
+
     def reprovar(self):
         self.aprovado = False
         self.reprovado = True

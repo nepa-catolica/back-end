@@ -388,7 +388,7 @@ def register_aluno(projeto_id):
     try:
         current_user = get_jwt_identity()
 
-        aluno = Aluno.query.filter_by(matricula=current_user['matricula']).first()
+        aluno = Aluno.query.filter_by(matricula=str(current_user['matricula'])).first()
 
         if not aluno:
             return jsonify({'message': 'Unauthorized'}), 401

@@ -8,7 +8,6 @@ from src.utils.extensions import db
 from src.utils.models import Aluno, Professor, Admin
 import sentry_sdk as sentry
 
-
 ph = PasswordHasher()
 
 
@@ -38,26 +37,26 @@ class AuthService:
                     return {'msg': 'Matrícula já cadastrada.', 'status': 400}
                 elif existing_aluno.telefone == telefone:
                     return {'msg': 'Telefone já cadastrado.', 'status': 400}
+            else:
+                hashed_password = ph.hash(password)
 
-            hashed_password = ph.hash(password)
+                aluno = Aluno(
+                    nome=nome,
+                    email=email,
+                    matricula=matricula,
+                    curso=curso,
+                    telefone=telefone,
+                    password=hashed_password
+                )
 
-            aluno = Aluno(
-                nome=nome,
-                email=email,
-                matricula=matricula,
-                curso=curso,
-                telefone=telefone,
-                password=hashed_password
-            )
+                db.session.add(aluno)
+                db.session.commit()
 
-            db.session.add(aluno)
-            db.session.commit()
-
-            return {
-                'msg': 'Aluno criado com sucesso.',
-                'aluno': aluno.nome,
-                'status': 201
-            }
+                return {
+                    'msg': 'Aluno criado com sucesso.',
+                    'aluno': aluno.nome,
+                    'status': 201
+                }
 
         except SQLAlchemyError as e:
             db.session.rollback()
@@ -81,7 +80,8 @@ class AuthService:
                 '0125ABD': 'Educação Física',
                 '0491PAS': 'Ciência da Computação',
                 '0394ISO': 'Direito',
-                '0586LAI': 'Marketing'
+                '0586LAI': 'Marketing',
+                '0674FIL': 'Filosofia'
             }
 
             if codigo_curso not in curso_mapping:
@@ -160,8 +160,8 @@ class AuthService:
     def checkProfessor(identifier):
         try:
             if identifier.isdigit():
-                matricula = int(identifier)
-                professor = Professor.query.filter_by(matricula=matricula).first()
+                identifier_str = str(identifier) if identifier is not None else ''
+                professor = Professor.query.filter_by(matricula=identifier_str).first()
             else:
                 try:
                     uuid_identifier = uuid.UUID(identifier)
@@ -194,14 +194,20 @@ class AuthService:
             sentry.capture_exception(e)
             return {'msg': 'Senha incorreta', 'status': 401}
 
-    @staticmethod
     def get_user_by_identifier(identifier):
         try:
+            identifier = str(identifier).strip()
+            user = Professor.query.filter_by(matricula=identifier).first()
+
+            if not user:
+                user = Aluno.query.filter_by(matricula=identifier).first()
+
             if identifier.isdigit():
-                matricula = int(identifier)
+                matricula = identifier
                 user = Professor.query.filter_by(matricula=matricula).first() or \
                        Aluno.query.filter_by(matricula=matricula).first()
-            else:
+
+            if not user:
                 try:
                     uuid_identifier = uuid.UUID(identifier)
                     user = Admin.query.filter_by(id=uuid_identifier).first() or \
