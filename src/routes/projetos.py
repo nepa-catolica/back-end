@@ -12,6 +12,7 @@ bp = Blueprint('projetos', __name__)
 
 @bp.route('/api/create', methods=['POST'])
 @jwt_required()
+@role_required(['Admin', 'professor'])
 def create_projeto():
     try:
         data = request.get_json()
@@ -154,20 +155,6 @@ def list_projects_aprovado():
         projetos_data = []
 
         for projeto in projetos:
-            alunos_projeto = AlunoProjeto.query.filter_by(projeto_id=projeto.id).all()
-
-            alunos_data = [
-                {
-                    'id': aluno_projeto.aluno.id,
-                    'nome': aluno_projeto.aluno.nome,
-                    'email': aluno_projeto.aluno.email,
-                    'matricula': aluno_projeto.aluno.matricula,
-                    'curso': aluno_projeto.aluno.curso,
-                    'aprovado': aluno_projeto.aprovado,
-                    'reprovado': aluno_projeto.reprovado
-                }
-                for aluno_projeto in alunos_projeto
-            ]
 
             projeto_data = {
                 'id': projeto.id,
@@ -182,8 +169,7 @@ def list_projects_aprovado():
                     'telefone': projeto.professor.telefone,
                 } if projeto.professor else None,
                 'telefone': projeto.professor.telefone if projeto.professor else None,
-                'data_criacao': projeto.data_criacao.strftime('%Y-%m-%d'),
-                'alunos_cadastrados': alunos_data
+                'data_criacao': projeto.data_criacao.strftime('%Y-%m-%d')
             }
 
             projetos_data.append(projeto_data)
