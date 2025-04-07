@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError
 from src.utils.models import Professor, Projeto, Aluno, AlunoProjeto
 from ..services.project_service import ProjetoService
-from src.utils.schemas import ProjetoSchema
+from src.utils.schemas import ProjetoSchema, AlunoProjetoFullSchema
 from src.utils.utils import role_required
 import sentry_sdk as sentry
 
@@ -147,14 +147,33 @@ def listar_projetos(projeto_id):
 @jwt_required()
 def list_projects_aprovado():
     try:
+
+        current_user_payload = get_jwt_identity()
+        current_user_id = current_user_payload.get('id')
+
         projetos = Projeto.query.filter(Projeto.aprovado == True).all()
 
         if not projetos:
             return jsonify({'message': 'Não existem projetos aprovados ou estão em processo de aprovação'}), 404
 
         projetos_data = []
+        restricted_schema = AlunoProjetoFullSchema(many=True)
 
         for projeto in projetos:
+            alunos_projeto = AlunoProjeto.query.filter_by(projeto_id=projeto.id).all()
+            alunos_data = restricted_schema.dump(alunos_projeto)
+
+            user_status = "Não Inscrito"
+
+            for aluno in alunos_data:
+                if str(aluno.get('id')) == str(current_user_id):
+                    if aluno.get('aprovado'):
+                        user_status = 'aprovado'
+                    elif aluno.get('reprovado'):
+                        user_status = 'reprovado'
+                    else:
+                        user_status = 'pendente'
+                    break
 
             projeto_data = {
                 'id': projeto.id,
@@ -169,7 +188,8 @@ def list_projects_aprovado():
                     'telefone': projeto.professor.telefone,
                 } if projeto.professor else None,
                 'telefone': projeto.professor.telefone if projeto.professor else None,
-                'data_criacao': projeto.data_criacao.strftime('%Y-%m-%d')
+                'data_criacao': projeto.data_criacao.strftime('%Y-%m-%d'),
+                'user_status': user_status
             }
 
             projetos_data.append(projeto_data)

@@ -237,7 +237,10 @@ class AuthService:
 
     @staticmethod
     def generate_token(user):
-        identifier_payload = {'email': user.email}
+        identifier_payload = {
+            'id': user.id,
+            'email': user.email
+        }
         role = None
         if isinstance(user, Admin):
             role = 'Admin'
