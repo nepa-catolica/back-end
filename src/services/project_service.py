@@ -1,31 +1,217 @@
-import os
+from datetime import datetime
+from sqlalchemy.exc import SQLAlchemyError
+from src.utils.models import Projeto, Professor, Aluno, AlunoProjeto
+from src.utils.extensions import db
+import sentry_sdk as sentry
 
-from ..models import Projeto
-from werkzeug.utils import secure_filename
-from flask import current_app
-from ..extensions import db
 
-
-class ProjectService:
+class ProjetoService:
 
     @staticmethod
-    def register_projeto(professor_id, titulacao, curso, titulo, linhaDePesquisa, situacao, descricao, palavrasChave, localizacao, populacao, justificativa, objetivoGeral, objetivoEspecifico, metodologia, cronogramaDeAtividade, referencias, termos):
-        projeto = Projeto(professor_id=professor_id, titulacao=titulacao, curso=curso, titulo=titulo, linhaDePesquisa=linhaDePesquisa, situacao=situacao, descricao=descricao, palavrasChave=palavrasChave, localizacao=localizacao, populacao=populacao, justificativa=justificativa, objetivoGeral=objetivoGeral, objetivoEspecifico=objetivoEspecifico, metodologia=metodologia, cronogramaDeAtividade=cronogramaDeAtividade, referencias=referencias, termos=termos)
+    def register_aluno_projeto(matricula, projeto_id):
+        try:
+            aluno = Aluno.query.filter_by(matricula=matricula).first()
 
-        db.session.add(projeto)
-        db.session.commit()
+            if not aluno:
+                return {'msg': 'Aluno não encontrado'}, 404
 
-        return projeto
-    #
-    # def register_project(nome, descricao, professor_id, arquivo_pdf=None):
-    #     projeto = Projeto(nome=nome, descricao=descricao, professor_id=professor_id)
-    #
-    #     if arquivo_pdf:
-    #         filename = secure_filename(arquivo_pdf.filename)
-    #         arquivo_pdf.save(os.path.join(current_app.config['UPLOAD_FOLDER'], filename))
-    #         projeto.edital_pdf = filename
-    #
-    #     db.session.add(projeto)
-    #     db.session.commit()
-    #
-    #     return projeto
+            projeto = Projeto.query.filter_by(id=projeto_id).first()
+
+            if not projeto:
+                return {'msg': 'Projeto não encontrado'}, 404
+
+            if not projeto.aprovado:
+                return {'msg': 'Projeto atual não está disponivel ou não foi aprovado.'}, 400
+
+            aluno_projeto = AlunoProjeto.query.filter_by(aluno_id=aluno.id, projeto_id=projeto.id).first()
+
+            if aluno_projeto:
+                if aluno_projeto.reprovado:
+                    return {'msg': 'Aluno foi reprovado anteriormente e não pode se cadastrar novamente neste projeto'}, 400
+                return {'msg': 'Aluno já está cadastrado neste projeto'}, 400
+
+            if projeto.vagas_ocupadas >= projeto.vagas:
+                return {'msg': 'Não há vagas disponiveis para o projeto atual.'}, 400
+
+            cadastro_aluno_projeto = AlunoProjeto(aluno_id=aluno.id, projeto_id=projeto.id)
+
+            db.session.add(cadastro_aluno_projeto)
+            db.session.commit()
+
+            return {'msg': 'Aluno cadastrado com sucesso no projeto', 'aluno_projeto': {
+                'aluno_id': cadastro_aluno_projeto.aluno_id,
+                'projeto_id': cadastro_aluno_projeto.projeto_id
+            }}, 201
+
+        except Exception as e:
+            db.session.rollback()
+            sentry.capture_exception(e)
+            return {'msg': f'Erro ao registrar aluno no projeto: {str(e)}'}, 500
+
+    @staticmethod
+    def aprovar_aluno_projeto(aluno_id, projeto_id):
+
+        try:
+            aluno = Aluno.query.filter_by(id=aluno_id).first()
+
+            if not aluno:
+                return {'msg': 'Aluno não encontrado'}, 404
+
+            projeto = Projeto.query.filter_by(id=projeto_id).first()
+
+            if not projeto:
+                return {'msg': 'Projeto não encontrado'}, 404
+
+            aluno_projeto = AlunoProjeto.query.filter_by(aluno_id=aluno.id, projeto_id=projeto.id).first()
+
+            if not aluno_projeto:
+                return {'msg': 'Aluno não está cadastrado neste projeto'}, 404
+
+            if aluno_projeto.aprovado:
+                return {'msg': 'Aluno já se encontra aprovado no projeto'}, 400
+
+            if projeto.vagas_ocupadas >= projeto.vagas:
+                return {'msg': 'Não há vagas disponiveis para o projeto atual.'}, 400
+
+            aluno_projeto.aprovar()
+            projeto.vagas_ocupadas += 1
+            db.session.commit()
+
+            aluno_projeto_data = {
+                'id': aluno_projeto.id,
+                'aluno_id': aluno_projeto.aluno_id,
+                'projeto_id': aluno_projeto.projeto_id,
+                'aprovado': aluno_projeto.aprovado,
+                'reprovado': aluno_projeto.reprovado
+            }
+
+            return {'msg': 'Aluno aprovado com sucesso no projeto', 'aluno_projeto': aluno_projeto_data}, 200
+
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            sentry.capture_exception(e)
+            return {'msg': f'Erro ao aprovar aluno do projeto: {str(e)}'}, 500
+
+    @staticmethod
+    def rejeitar_aluno_projeto(aluno_id, projeto_id):
+        try:
+            aluno = Aluno.query.filter_by(id=aluno_id).first()
+            if not aluno:
+                return {'msg': 'Aluno não encontrado'}, 404
+
+            projeto = Projeto.query.filter_by(id=projeto_id).first()
+            if not projeto:
+                return {'msg': 'Projeto não encontrado'}, 404
+
+            aluno_projeto = AlunoProjeto.query.filter_by(aluno_id=aluno.id, projeto_id=projeto.id).first()
+            if not aluno_projeto:
+                return {'msg': 'Aluno não está cadastrado neste projeto'}, 404
+
+            aluno_projeto.reprovar()
+            db.session.commit()
+
+            aluno_projeto_data = {
+                'id': aluno_projeto.id,
+                'aluno_id': aluno_projeto.aluno_id,
+                'projeto_id': aluno_projeto.projeto_id,
+                'aprovado': aluno_projeto.aprovado,
+                'reprovado': aluno_projeto.reprovado
+            }
+
+            return {'msg': 'Aluno rejeitado e removido do projeto', 'aluno_projeto': aluno_projeto_data}, 200
+
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            sentry.capture_exception(e)
+            return {'msg': f'Erro ao rejeitar aluno do projeto: {str(e)}'}, 500
+
+
+    @staticmethod
+    def register_projeto(professor_id, vagas, titulacao, curso, titulo, linhaDePesquisa, situacao, descricao, palavrasChave,
+                         localizacao, populacao, justificativa, objetivoGeral, objetivoEspecifico, metodologia,
+                         cronogramaDeAtividade, referencias, termos):
+        try:
+            projeto = Projeto(
+                professor_id=professor_id,
+                vagas=vagas,
+                vagas_ocupadas=0,
+                titulacao=titulacao,
+                curso=curso,
+                titulo=titulo,
+                linhaDePesquisa=linhaDePesquisa,
+                situacao=situacao,
+                descricao=descricao,
+                palavrasChave=palavrasChave,
+                localizacao=localizacao,
+                populacao=populacao,
+                justificativa=justificativa,
+                objetivoGeral=objetivoGeral,
+                objetivoEspecifico=objetivoEspecifico,
+                metodologia=metodologia,
+                cronogramaDeAtividade=cronogramaDeAtividade,
+                referencias=referencias,
+                termos=termos
+            )
+
+            projeto.set_data_limite_edicao()
+
+            db.session.add(projeto)
+            db.session.commit()
+
+            return {'msg': 'Projeto registrado com sucesso', 'status': 201, 'projeto': projeto}
+
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            sentry.capture_exception(e)
+            return {'msg': f'Erro ao registrar projeto no banco de dados: {str(e)}', 'status': 500}
+
+    @staticmethod
+    def edit_projeto(user_email, projeto_id, vagas, titulacao, curso, titulo, linhaDePesquisa, situacao, descricao,
+                     palavrasChave, localizacao, populacao, justificativa, objetivoGeral, objetivoEspecifico,
+                     metodologia, cronogramaDeAtividade, referencias, termos):
+        try:
+            professor = Professor.query.filter(Professor.email == user_email).first()
+            if not professor or professor.permissao != 'professor' or not professor.aprovado:
+                return {'msg': 'Unauthorized'}, 401
+
+            projeto = Projeto.query.filter_by(id=projeto_id, professor_id=professor.id).first()
+            if not projeto:
+                return {'msg': 'Projeto não encontrado ou você não tem permissão para editá-lo'}, 404
+
+            if projeto.data_limite_edicao and datetime.utcnow() > projeto.data_limite_edicao:
+                if not projeto.aprovado:
+                    return {'msg': 'O período para editar este projeto expirou'}, 403
+                else:
+                    return {'msg': 'Este projeto já foi aprovado e não pode mais ser editado'}, 403
+
+            projeto.vagas = vagas
+            projeto.titulacao = titulacao
+            projeto.curso = curso
+            projeto.titulo = titulo
+            projeto.linhaDePesquisa = linhaDePesquisa
+            projeto.situacao = situacao
+            projeto.descricao = descricao
+            projeto.palavrasChave = palavrasChave
+            projeto.localizacao = localizacao
+            projeto.populacao = populacao
+            projeto.justificativa = justificativa
+            projeto.objetivoGeral = objetivoGeral
+            projeto.objetivoEspecifico = objetivoEspecifico
+            projeto.metodologia = metodologia
+            projeto.cronogramaDeAtividade = cronogramaDeAtividade
+            projeto.referencias = referencias
+            projeto.termos = termos
+
+            db.session.commit()
+
+            return {'msg': 'Projeto atualizado com sucesso', 'status': 200}
+
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            sentry.capture_exception(e)
+            return {'msg': f'Erro ao acessar o banco de dados: {str(e)}', 'status': 500}
+
+        except Exception as e:
+            db.session.rollback()
+            sentry.capture_exception(e)
+            return {'msg': f'Ocorreu um erro inesperado ao editar o projeto: {str(e)}', 'status': 500}

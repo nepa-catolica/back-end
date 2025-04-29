@@ -1,109 +1,419 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-
-from ..models import Professor
-from ..models import Projeto
-
-from ..services.project_service import ProjectService
+from sqlalchemy.exc import SQLAlchemyError
+from src.utils.models import Professor, Projeto, Aluno, AlunoProjeto
+from ..services.project_service import ProjetoService
+from src.utils.schemas import ProjetoSchema, AlunoProjetoFullSchema
+from src.utils.utils import role_required
+import sentry_sdk as sentry
 
 bp = Blueprint('projetos', __name__)
 
-@bp.route('api/create', methods=['POST'])
+
+@bp.route('/api/create', methods=['POST'])
 @jwt_required()
+@role_required(['Admin', 'professor'])
 def create_projeto():
-    data = request.get_json()
-    current_user = get_jwt_identity()
-
-    professor = Professor.query.filter(Professor.email == current_user['email']).first()
-
-    if professor.permissao != 'professor':
-        return jsonify({'msg': 'Unauthorized'}), 401
-
-    if not professor or not professor.aprovado:
-        return jsonify({'msg': 'Acesso negado! Professor não aprovado!'}), 401
-
-    titulacao = data['titulacao']
-    curso = data['curso']
-    titulo = data['titulo']
-    linhaDePesquisa = data['linhaDePesquisa']
-    situacao = data['situacao']
-    descricao = data['descricao']
-    palavrasChave = data['palavrasChave']
-    localizacao = data['localizacao']
-    populacao = data['populacao']
-    justificativa = data['justificativa']
-    objetivoGeral = data['objetivoGeral']
-    objetivoEspecifico = data['objetivoEspecifico']
-    metodologia = data['metodologia']
-    cronogramaDeAtividade = data['cronogramaDeAtividade']
-    referencias = data['referencias']
-    termos = data['termos']
-
-    campos = [titulacao, curso, titulo, linhaDePesquisa, situacao, descricao, palavrasChave, localizacao, populacao, justificativa, objetivoGeral, objetivoEspecifico, metodologia, cronogramaDeAtividade, referencias, termos]
-
-
-    for x in range(len(campos)):
-        if not campos[x]:
-            return jsonify({'msg': 'Não foi possivel prosseguir, pois existem campos vazios'}), 400
-
     try:
-        novo_projeto = ProjectService.register_projeto(professor.id, titulacao, curso, titulo, linhaDePesquisa, situacao, descricao, palavrasChave, localizacao, populacao, justificativa, objetivoGeral, objetivoEspecifico, metodologia, cronogramaDeAtividade, referencias, termos)
-        return jsonify({'msg': 'Projeto registrado com sucesso!'}), 201
+        data = request.get_json()
+        if not data:
+            return jsonify({'message': 'Nenhum dado foi fornecido'}), 400
+
+        current_user = get_jwt_identity()
+        professor = Professor.query.filter(Professor.email == current_user['email']).first()
+
+        if not professor or professor.permissao != 'professor' or not professor.aprovado:
+            return jsonify({'message': 'Unauthorized'}), 401
+
+        schema = ProjetoSchema()
+        errors = schema.validate(data)
+        if errors:
+            return jsonify(errors), 400
+
+        response = ProjetoService.register_projeto(professor.id, **data)
+        return jsonify({'message': response['msg']}), response['status']
 
     except Exception as e:
-        return jsonify({'msg': str(e)}), 400
+        sentry.capture_exception(e)
+        return jsonify({'message': f'Ocorreu um erro inesperado: {str(e)}'}), 500
 
-# def create_projeto():
-#     data = request.get_json()
-#     current_user = get_jwt_identity()
-#
-#     professor = Professor.query.filter(Professor.email == current_user['email']).first()
-#
-#     if professor.permissao != 'professor':
-#         return jsonify({'msg': 'Unauthorized'}), 401
-#
-#     if not professor or not professor.aprovado:
-#         return jsonify({'msg': "Acesso negado: Professor não aprovado"}), 403
-#
-#     nome = data['nome']
-#     descricao = data['descricao']
-#     arquivo_pdf = data.get('edital_pdf')
-#
-#     if not nome or not descricao:
-#         return jsonify({"message": "Nome e descrição são obrigatórios"}), 400
-#
-#     try:
-#         novo_projeto = ProjectService.register_project(nome, descricao, professor.id, arquivo_pdf)
-#         return jsonify({'msg': 'Projeto registrado com sucesso', 'projeto': {
-#             'id': novo_projeto.id,
-#             'nome': novo_projeto.nome,
-#             'descricao': novo_projeto.descricao,
-#             'data_criacao': novo_projeto.data_criacao,
-#             'edital_pdf': novo_projeto.edital_pdf,
-#         }}), 201
-#
-#     except Exception as e:
-#         return jsonify({"message": "Erro ao criar projeto", "error": str(e)}), 400
+
+@bp.route('/api/projeto/<uuid:projeto_id>/alunos', methods=['GET'])
+@jwt_required()
+@role_required(['Admin', 'professor'])
+def listar_alunos_projeto(projeto_id):
+    try:
+        projeto = Projeto.query.filter_by(id=str(projeto_id)).first()
+
+        if not projeto:
+            return jsonify({'msg': 'Projeto não encontrado'}), 404
+
+        alunos_projeto = AlunoProjeto.query.filter_by(projeto_id=str(projeto_id)).all()
+
+        if not alunos_projeto:
+            return jsonify({'msg': 'Nenhum aluno cadastrado neste projeto'}), 404
+
+        alunos_data = [
+            {
+                'aluno_id': p.aluno_id,
+                'nome': p.aluno.nome,
+                'telefone': p.aluno.telefone,
+                'email': p.aluno.email,
+                'matricula': p.aluno.matricula,
+                'curso': p.aluno.curso,
+                'aprovado': p.aprovado,
+                'reprovado': p.reprovado
+            }
+            for p in alunos_projeto
+        ]
+
+        return jsonify({'alunos': alunos_data}), 200
+
+    except Exception as e:
+        sentry.capture_exception(e)
+        return jsonify({'msg': f'Ocorreu um erro: {str(e)}'}), 500
+
+
+@bp.route('/api/aprovar/<uuid:projeto_id>/aluno/<uuid:aluno_id>', methods=['POST'])
+@jwt_required()
+@role_required('professor')
+def aprovar_aluno_no_projeto(projeto_id, aluno_id):
+    try:
+        response, status_code = ProjetoService.aprovar_aluno_projeto(str(aluno_id), str(projeto_id))
+
+        return jsonify(response), status_code
+
+    except Exception as e:
+        sentry.capture_exception(e)
+        return jsonify({"message": f"Erro ao aprovar aluno no projeto: {str(e)}"}), 500
+
+
+@bp.route('/api/projeto/<uuid:projeto_id>/aluno/<uuid:aluno_id>/rejeitar', methods=['POST'])
+@jwt_required()
+@role_required('professor')
+def rejeitar_aluno_no_projeto(projeto_id, aluno_id):
+    try:
+        response, status_code = ProjetoService.rejeitar_aluno_projeto(str(aluno_id), str(projeto_id))
+        return jsonify(response), status_code
+
+    except Exception as e:
+        sentry.capture_exception(e)
+        return jsonify({"msg": f"Erro inesperado ao rejeitar aluno do projeto: {str(e)}"}), 500
+
+
+@bp.route('/api/listar/projeto/<uuid:projeto_id>', methods=['GET'])
+@jwt_required()
+def listar_projetos(projeto_id):
+    try:
+        projeto = Projeto.query.filter_by(id=str(projeto_id)).first()
+
+        if not projeto:
+            return jsonify({'msg': 'Projeto não encontrado'}), 404
+
+        projeto_data = {
+            'id': projeto.id,
+            'titulo': projeto.titulo,
+            'descricao': projeto.descricao,
+            'vagas': projeto.vagas,
+            'vagas_ocupadas': projeto.vagas_ocupadas,
+            'titulacao': projeto.titulacao,
+            'curso': projeto.curso,
+            'linhaDePesquisa': projeto.linhaDePesquisa,
+            'situacao': projeto.situacao,
+            'palavrasChave': projeto.palavrasChave,
+            'localizacao': projeto.localizacao,
+            'populacao': projeto.populacao,
+            'justificativa': projeto.justificativa,
+            'objetivoGeral': projeto.objetivoGeral,
+            'objetivoEspecifico': projeto.objetivoEspecifico,
+            'metodologia': projeto.metodologia,
+            'cronogramaDeAtividade': projeto.cronogramaDeAtividade,
+            'referencias': projeto.referencias,
+            'termos': projeto.termos,
+            'data_criacao': projeto.data_criacao.strftime('%Y-%m-%d'),
+            'aprovado': projeto.aprovado,
+            'data_limite_edicao': projeto.data_limite_edicao.strftime(
+                '%Y-%m-%d') if projeto.data_limite_edicao else None
+        }
+
+        return jsonify(projeto_data), 200
+
+    except Exception as e:
+        sentry.capture_exception(e)
+        return jsonify({'msg': f'Ocorreu um erro: {str(e)}'}), 500
+
 
 @bp.route('/api/listar/projetos_aprovados', methods=['GET'])
 @jwt_required()
 def list_projects_aprovado():
     try:
+
+        current_user_payload = get_jwt_identity()
+        current_user_id = current_user_payload.get('id')
+
         projetos = Projeto.query.filter(Projeto.aprovado == True).all()
 
         if not projetos:
-            return jsonify({'message': 'Não existem projetos aprovados ou estão em processo de aprovação'}), 400
+            return jsonify({'message': 'Não existem projetos aprovados ou estão em processo de aprovação'}), 404
+
+        projetos_data = []
+        restricted_schema = AlunoProjetoFullSchema(many=True)
+
+        for projeto in projetos:
+            alunos_projeto = AlunoProjeto.query.filter_by(projeto_id=projeto.id).all()
+            alunos_data = restricted_schema.dump(alunos_projeto)
+
+            user_status = "Não Inscrito"
+
+            for aluno in alunos_data:
+                if str(aluno.get('id')) == str(current_user_id):
+                    if aluno.get('aprovado'):
+                        user_status = 'aprovado'
+                    elif aluno.get('reprovado'):
+                        user_status = 'reprovado'
+                    else:
+                        user_status = 'pendente'
+                    break
+
+            projeto_data = {
+                'id': projeto.id,
+                'titulo': projeto.titulo,
+                'descricao': projeto.descricao,
+                'vagas': projeto.vagas,
+                'vagas_ocupadas': projeto.vagas_ocupadas,
+                'professor': {
+                    'id': projeto.professor.id,
+                    'nome': projeto.professor.nome,
+                    'email': projeto.professor.email,
+                    'telefone': projeto.professor.telefone,
+                } if projeto.professor else None,
+                'telefone': projeto.professor.telefone if projeto.professor else None,
+                'data_criacao': projeto.data_criacao.strftime('%Y-%m-%d'),
+                'user_status': user_status
+            }
+
+            projetos_data.append(projeto_data)
+
+        return jsonify(projetos_data), 200
+
+    except SQLAlchemyError as e:
+        sentry.capture_exception(e)
+        return jsonify({'message': 'Erro ao acessar o banco de dados', 'error': str(e)}), 500
+
+    except Exception as e:
+        sentry.capture_exception(e)
+        return jsonify({'message': f'Ocorreu um erro inesperado: {str(e)}'}), 500
+
+
+@bp.route('/api/meus_projetos', methods=['GET'])
+@jwt_required()
+@role_required('professor')
+def listar_meus_projetos():
+    try:
+        current_user = get_jwt_identity()
+        professor = Professor.query.filter_by(email=current_user['email']).first()
+
+        if not professor:
+            return jsonify({'message': 'Professor não encontrado'}), 404
+
+        projetos = Projeto.query.filter_by(professor_id=professor.id).all()
+
+        if not projetos:
+            return jsonify({'message': 'Nenhum projeto aprovado encontrado para este professor'}), 404
+
+        projetos_data = []
+        for projeto in projetos:
+            alunos_projeto = AlunoProjeto.query.filter_by(projeto_id=projeto.id).all()
+
+            alunos_data = [
+                {
+                    'id': aluno_projeto.aluno.id,
+                    'nome': aluno_projeto.aluno.nome,
+                    'email': aluno_projeto.aluno.email,
+                    'matricula': aluno_projeto.aluno.matricula,
+                    'curso': aluno_projeto.aluno.curso,
+                    'aprovado': aluno_projeto.aprovado
+                }
+                for aluno_projeto in alunos_projeto
+            ]
+
+            projeto_data = {
+                'id': projeto.id,
+                'titulo': projeto.titulo,
+                'descricao': projeto.descricao,
+                'vagas': projeto.vagas,
+                'vagas_ocupadas': projeto.vagas_ocupadas,
+                'titulacao': projeto.titulacao,
+                'curso': projeto.curso,
+                'linhaDePesquisa': projeto.linhaDePesquisa,
+                'situacao': projeto.situacao,
+                'palavrasChave': projeto.palavrasChave,
+                'localizacao': projeto.localizacao,
+                'populacao': projeto.populacao,
+                'justificativa': projeto.justificativa,
+                'objetivoGeral': projeto.objetivoGeral,
+                'objetivoEspecifico': projeto.objetivoEspecifico,
+                'metodologia': projeto.metodologia,
+                'cronogramaDeAtividade': projeto.cronogramaDeAtividade,
+                'referencias': projeto.referencias,
+                'termos': projeto.termos,
+                'data_criacao': projeto.data_criacao.strftime('%Y-%m-%d'),
+                'aprovado': projeto.aprovado,
+                'data_limite_edicao': projeto.data_limite_edicao.strftime(
+                    '%Y-%m-%d') if projeto.data_limite_edicao else None,
+                'alunos_cadastrados': alunos_data
+            }
+
+            projetos_data.append(projeto_data)
+
+        return jsonify(projetos_data), 200
+
+    except SQLAlchemyError as e:
+        sentry.capture_exception(e)
+        return jsonify({'message': 'Erro ao acessar o banco de dados', 'error': str(e)}), 500
+
+    except Exception as e:
+        sentry.capture_exception(e)
+        return jsonify({'message': f'Ocorreu um erro inesperado: {str(e)}'}), 500
+
+
+@bp.route('/api/listar/projetos_pendentes', methods=['GET'])
+@jwt_required()
+@role_required('Admin')
+def list_projects_pendentes():
+    try:
+        projetos = Projeto.query.filter(Projeto.aprovado == False).all()
+
+        if not projetos:
+            return jsonify({'message': 'Não existem projetos rejeitados ou estão em processo de aprovação'}), 200
 
         projetos_data = [{
             'id': projeto.id,
-            'nome': projeto.nome,
+            'titulo': projeto.titulo,
             'descricao': projeto.descricao,
-            'alunos_cadastrados': projeto.alunos_cadastrados,
-            'professor': projeto.professor.nome if projeto.professor else None,
-            'edital_pdf': projeto.edital_pdf
+            'vagas': projeto.vagas,
+            'vagas_ocupadas': projeto.vagas_ocupadas,
+            'titulacao': projeto.titulacao,
+            'curso': projeto.curso,
+            'linhaDePesquisa': projeto.linhaDePesquisa,
+            'situacao': projeto.situacao,
+            'palavrasChave': projeto.palavrasChave,
+            'localizacao': projeto.localizacao,
+            'populacao': projeto.populacao,
+            'justificativa': projeto.justificativa,
+            'objetivoGeral': projeto.objetivoGeral,
+            'objetivoEspecifico': projeto.objetivoEspecifico,
+            'metodologia': projeto.metodologia,
+            'cronogramaDeAtividade': projeto.cronogramaDeAtividade,
+            'referencias': projeto.referencias,
+            'termos': projeto.termos,
+            'data_criacao': projeto.data_criacao.strftime('%Y-%m-%d %H:%M:%S'),
+            'aprovado': projeto.aprovado,
+            'data_limite_edicao': projeto.data_limite_edicao.strftime(
+                '%Y-%m-%d %H:%M:%S') if projeto.data_limite_edicao else None,
+            'professor': {
+                'id': projeto.professor.id,
+                'nome': projeto.professor.nome,
+                'email': projeto.professor.email,
+                'telefone': projeto.professor.telefone,
+                'vagas': projeto.vagas,
+            } if projeto.professor else None
         } for projeto in projetos]
 
         return jsonify(projetos_data), 200
 
+    except SQLAlchemyError as e:
+        sentry.capture_exception(e)
+        return jsonify({'message': 'Erro ao acessar o banco de dados', 'error': str(e)}), 500
+
     except Exception as e:
-        return jsonify({'message': 'Erro ao listar projetos', 'error': str(e)}), 400
+        sentry.capture_exception(e)
+        return jsonify({'message': f'Ocorreu um erro inesperado: {str(e)}'}), 500
+
+
+@bp.route('/api/editar/projeto/<uuid:projeto_id>', methods=['PUT'])
+@jwt_required()
+def editar_projeto(projeto_id):
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'msg': 'Nenhum dado foi fornecido'}), 400
+
+        current_user = get_jwt_identity()
+        if not projeto_id:
+            return jsonify({'msg': 'O ID do projeto é obrigatório'}), 400
+
+        campos_obrigatorios = ['vagas', 'titulacao', 'curso', 'titulo', 'linhaDePesquisa', 'situacao', 'descricao',
+                               'palavrasChave', 'localizacao', 'populacao', 'justificativa', 'objetivoGeral',
+                               'objetivoEspecifico', 'metodologia', 'cronogramaDeAtividade', 'referencias', 'termos']
+
+        for campo in campos_obrigatorios:
+            if not data.get(campo):
+                return jsonify({'msg': f'O campo "{campo}" é obrigatório e não pode estar vazio'}), 400
+
+        response = ProjetoService.edit_projeto(
+            user_email=current_user['email'],
+            projeto_id=str(projeto_id),
+            vagas=data.get('vagas'),
+            titulacao=data.get('titulacao'),
+            curso=data.get('curso'),
+            titulo=data.get('titulo'),
+            linhaDePesquisa=data.get('linhaDePesquisa'),
+            situacao=data.get('situacao'),
+            descricao=data.get('descricao'),
+            palavrasChave=data.get('palavrasChave'),
+            localizacao=data.get('localizacao'),
+            populacao=data.get('populacao'),
+            justificativa=data.get('justificativa'),
+            objetivoGeral=data.get('objetivoGeral'),
+            objetivoEspecifico=data.get('objetivoEspecifico'),
+            metodologia=data.get('metodologia'),
+            cronogramaDeAtividade=data.get('cronogramaDeAtividade'),
+            referencias=data.get('referencias'),
+            termos=data.get('termos')
+        )
+
+        return jsonify({'msg': response['msg']}), response['status']
+
+    except KeyError as e:
+        sentry.capture_exception(e)
+        return jsonify({'msg': f'Campo obrigatório ausente: {str(e)}'}), 400
+
+    except ValueError as e:
+        sentry.capture_exception(e)
+        return jsonify({'msg': f'Valor inválido: {str(e)}'}), 400
+
+    except Exception as e:
+        sentry.capture_exception(e)
+        return jsonify({'msg': f'Ocorreu um erro inesperado: {str(e)}'}), 500
+
+
+@bp.route('/api/register/aluno_projeto/<uuid:projeto_id>', methods=['POST'])
+@jwt_required()
+def register_aluno(projeto_id):
+    try:
+        current_user = get_jwt_identity()
+
+        aluno = Aluno.query.filter_by(matricula=str(current_user['matricula'])).first()
+
+        if not aluno:
+            return jsonify({'message': 'Unauthorized'}), 401
+
+        aluno_data = {
+            'id': aluno.id,
+            'nome': aluno.nome,
+            'matricula': aluno.matricula,
+            'curso': aluno.curso,
+            'data_ingresso': aluno.data_ingresso.strftime('%Y-%m-%d'),
+            'telefone': aluno.telefone,
+            'email': aluno.email,
+            'permissao': aluno.permissao
+        }
+
+        response, status_code = ProjetoService.register_aluno_projeto(aluno.matricula, str(projeto_id))
+
+        return jsonify({'aluno': aluno_data, **response}), status_code
+
+    except Exception as e:
+        sentry.capture_exception(e)
+        return jsonify({'msg': f'Ocorreu um erro: {str(e)}'}), 500
